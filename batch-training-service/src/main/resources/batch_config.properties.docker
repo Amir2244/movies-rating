@@ -1,0 +1,40 @@
+# ==============================================================================
+# Configuration for Batch Training Service (batch-training-service) - DOCKER ENVIRONMENT
+# ==============================================================================
+# ------------------------------------------------------------------------------
+# Spark Application Configuration
+# ------------------------------------------------------------------------------
+# Application name as it will appear in Spark UI and logs
+spark.app.name=MovieRecsysBatchTrainerHDFS
+# Spark master URL - points to the Spark master container
+spark.master.url=spark://spark-master:7077
+# ------------------------------------------------------------------------------
+# HDFS Data Input Configuration (Primary data source for ratings)
+# ------------------------------------------------------------------------------
+# Full HDFS path to the input ratings data (e.g., CSV file).
+# This path points to the HDFS namenode container
+data.input.ratings.hdfs.path=hdfs://namenode:8020/input/ratings.csv
+# ------------------------------------------------------------------------------
+# Redis Configuration (for storing computed model factors)
+# ------------------------------------------------------------------------------
+# Hostname points to the Redis container
+redis.host=redis
+# Port number for your Redis instance.
+redis.port=6379
+# ------------------------------------------------------------------------------
+# ALS Model Hyperparameters
+# ------------------------------------------------------------------------------
+# Number of latent factors to use (rank of the factor matrices).
+als.rank=12
+# Maximum number of iterations for the ALS algorithm to run.
+als.maxIter=15
+# Regularization parameter (lambda) to prevent overfitting.
+als.regParam=0.1
+# Seed for reproducibility of random operations (e.g., initial factors, data splitting).
+als.seed=12345
+# Whether to treat preferences as implicit (true) or explicit (false, e.g., ratings).
+als.implicitPrefs=false
+# Alpha parameter, used only if implicitPrefs is true. Controls the baseline confidence in preference observations.
+als.alpha=1.0
+# Ratio for splitting data into training and test sets (e.g., 0.8 means 80% for training).
+als.trainingSplitRatio=0.8
