@@ -16,11 +16,13 @@ import org.hiast.batch.application.port.in.TrainingModelUseCase;
 import org.hiast.batch.application.port.out.FactorPersistencePort;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
 import org.hiast.batch.config.ALSConfig;
+import org.hiast.batch.config.HDFSConfig;
 import org.hiast.batch.domain.model.ModelFactors;
 import org.hiast.batch.domain.model.ProcessedRating;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -35,13 +37,18 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
     private final RatingDataProviderPort ratingDataProvider;
     private final FactorPersistencePort factorPersistence;
     private final ALSConfig alsConfig;
+    private final HDFSConfig hdfsConfig;
 
-    public ALSModelTrainerService(SparkSession spark, RatingDataProviderPort ratingDataProvider,
-                                  FactorPersistencePort factorPersistence, ALSConfig alsConfig) {
+    public ALSModelTrainerService(SparkSession spark,
+                                  RatingDataProviderPort ratingDataProvider,
+                                  FactorPersistencePort factorPersistence,
+                                  ALSConfig alsConfig,
+                                  HDFSConfig hdfsConfig) {
         this.spark = spark;
         this.ratingDataProvider = ratingDataProvider;
         this.factorPersistence = factorPersistence;
         this.alsConfig = alsConfig;
+        this.hdfsConfig = hdfsConfig;
     }
 
     @Override
@@ -220,7 +227,21 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
         factorPersistence.saveModelFactors(new ModelFactors(userFactors, itemFactors));
         log.info("Model factors persisted successfully.");
 
+        // 6. Save model to HDFS
+        saveModelToHDFS(model, hdfsConfig.getModelSavePath());
 
         log.info("ALS model training pipeline finished (explicit DF creation before split).");
+    }
+
+    @Override
+    public void saveModelToHDFS(ALSModel model, String path) {
+        try {
+            log.info("Saving ALS model to HDFS at path: {}", path);
+            model.save(path);
+            log.info("ALS model saved successfully to HDFS.");
+        } catch (IOException e) {
+            log.error("Failed to save ALS model to HDFS at path: {}", path, e);
+            throw new RuntimeException("Failed to save ALS model to HDFS", e);
+        }
     }
 }

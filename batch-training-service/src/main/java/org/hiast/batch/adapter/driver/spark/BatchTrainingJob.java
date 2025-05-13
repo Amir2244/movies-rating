@@ -73,7 +73,8 @@ public final class BatchTrainingJob {
                 spark,
                 ratingDataProvider,
                 factorPersistence,
-                alsConfig
+                alsConfig,
+                hdfsConfig
         );
         log.info("Application service (ALSModelTrainerService) instantiated.");
 
