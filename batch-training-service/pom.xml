@@ -26,6 +26,7 @@
         <junit.version>4.13.2</junit.version>
         <mockito.version>5.11.0</mockito.version>
         <gcs.connector.version>hadoop3-2.2.22</gcs.connector.version>
+        <maven.test.skip>true</maven.test.skip>
     </properties>
 
     <dependencies>

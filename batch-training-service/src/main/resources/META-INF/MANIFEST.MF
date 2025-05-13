@@ -1,3 +1,2 @@
 Manifest-Version: 1.0
-Main-Class: org.hiast.batch.adapter.driver.spark.BatchTrainingJob
-
+Main-Class: org.hiast.batch.launcher.AppLauncher

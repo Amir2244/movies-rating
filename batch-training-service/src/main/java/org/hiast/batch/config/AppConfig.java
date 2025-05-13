@@ -41,7 +41,8 @@ public class AppConfig {
 
     public HDFSConfig getHDFSConfig() {
         return new HDFSConfig(
-                properties.getProperty("data.input.ratings.hdfs.path", "hdfs:///user/your_user/movielens/ratings.csv") // Default HDFS path
+                properties.getProperty("data.input.ratings.hdfs.path", "hdfs:///user/your_user/movielens/ratings.csv"), // Default HDFS path for ratings
+                properties.getProperty("data.output.model.hdfs.path", "hdfs:///user/your_user/models/als_model") // Default HDFS path for model
         );
     }
 
