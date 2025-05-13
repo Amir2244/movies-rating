@@ -9,7 +9,7 @@ services:
       - "9870:9870"   # HDFS Web UI
       - "8020:8020"   # HDFS RPC
     volumes:
-      - ./namenode_data:/hadoop/dfs/name
+      - ./docker-volumes/namenode_data:/hadoop/dfs/name
     networks:
       - app-network
 
@@ -23,7 +23,7 @@ services:
     ports:
       - "9864:9864"
     volumes:
-      - ./datanode_data:/hadoop/dfs/data
+      - ./docker-volumes/datanode_data:/hadoop/dfs/data
     networks:
       - app-network
 
@@ -37,9 +37,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./batch-training-service/target/batch-training-service.jar:/opt/spark-apps/batch-training-service.jar
-      - ./spark_master_app_logs:/opt/spark-apps/logs
-      - ./spark_master_spark_logs:/opt/spark/logs
+      - ./docker-volumes/batch-training-service/target/batch-training-service.jar:/opt/spark-apps/batch-training-service.jar
+      - ./docker-volumes/spark_master_app_logs:/opt/spark-apps/logs
+      - ./docker-volumes/spark_master_spark_logs:/opt/spark/logs
     depends_on:
       - namenode
       - redis
@@ -55,8 +55,8 @@ services:
       - SPARK_MASTER_URL=spark://spark-master:7077
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
     volumes:
-      - ./spark_worker_app_logs:/opt/spark-apps/logs
-      - ./spark_worker_daemon_logs:/opt/spark/logs
+      - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
+      - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
     depends_on:
       - spark-master
       - datanode
@@ -72,8 +72,8 @@ services:
       - SPARK_MASTER_URL=spark://spark-master:7077
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
     volumes:
-      - ./spark_worker_app_logs:/opt/spark-apps/logs
-      - ./spark_worker_daemon_logs:/opt/spark/logs
+      - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
+      - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
 
     depends_on:
       - spark-master
@@ -86,7 +86,7 @@ services:
     image: redis:latest
     container_name: redis
     volumes:
-      - ./redis_data:/data
+      - ./docker-volumes/redis_data:/data
     networks:
       - app-network
 
