@@ -69,9 +69,39 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
                 log.warn("ALS model training pipeline finished with warnings. Model saved: {}, Factors persisted: {}",
                         result.isModelSaved(), result.isFactorsPersisted());
             }
+ batch-service
         } catch (Exception e) {
             log.error("Error during model training pipeline: ", e);
             throw e;
+=======
+        } else {
+            log.warn("Test DataFrame 'testDataRow' is empty or count is zero, skipping model evaluation.");
+        }
+
+        // 5. Persist Factors
+        log.info("Persisting model factors...");
+        Dataset<Row> userFactors = model.userFactors().withColumnRenamed("id", "userId");
+        Dataset<Row> itemFactors = model.itemFactors().withColumnRenamed("id", "itemId");
+
+        factorPersistence.saveModelFactors(new ModelFactors(userFactors, itemFactors));
+        log.info("Model factors persisted successfully.");
+
+        // 6. Save model to HDFS
+        saveModelToHDFS(model, hdfsConfig.getModelSavePath());
+
+        log.info("ALS model training pipeline finished (explicit DF creation before split).");
+    }
+
+    @Override
+    public void saveModelToHDFS(ALSModel model, String path) {
+        try {
+            log.info("Saving ALS model to HDFS at path: {}", path);
+            model.write().overwrite().save(path);
+            log.info("ALS model saved successfully to HDFS.");
+        } catch (IOException e) {
+            log.error("Failed to save ALS model to HDFS at path: {}", path, e);
+            throw new RuntimeException("Failed to save ALS model to HDFS", e);
+ master
         }
     }
 }

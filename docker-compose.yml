@@ -37,7 +37,11 @@ services:
     ports:
       - "8080:8080"
     volumes:
+ batch-service
       - ./batch-training-service/target/batch-training-service.jar:/opt/spark-apps/batch-training-service.jar
+=======
+      - ./docker-volumes/batch-training-service/target/batch-training-service.jar:/opt/spark-apps/batch-training-service.jar
+ master
       - ./docker-volumes/spark_master_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_master_spark_logs:/opt/spark/logs
     depends_on:
