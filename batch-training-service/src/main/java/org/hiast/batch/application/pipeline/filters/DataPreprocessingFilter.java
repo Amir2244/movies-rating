@@ -10,7 +10,7 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.storage.StorageLevel;
 import org.hiast.batch.application.pipeline.Filter;
-import org.hiast.batch.application.pipeline.TrainingPipelineContext;
+import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
 import org.hiast.batch.domain.model.ProcessedRating;
 import org.slf4j.Logger;
@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Filter that preprocesses the raw ratings data.
  */
-public class DataPreprocessingFilter implements Filter<TrainingPipelineContext, TrainingPipelineContext> {
+public class DataPreprocessingFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
     private static final Logger log = LoggerFactory.getLogger(DataPreprocessingFilter.class);
     
     private final RatingDataProviderPort ratingDataProvider;
@@ -29,7 +29,7 @@ public class DataPreprocessingFilter implements Filter<TrainingPipelineContext, 
     }
     
     @Override
-    public TrainingPipelineContext process(TrainingPipelineContext context) {
+    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
         log.info("Preprocessing ratings data into Dataset<ProcessedRating>...");
         
         Dataset<Row> rawRatings = context.getRawRatings();

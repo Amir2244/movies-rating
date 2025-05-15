@@ -4,7 +4,7 @@ import org.apache.spark.ml.recommendation.ALSModel;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.hiast.batch.application.pipeline.Filter;
-import org.hiast.batch.application.pipeline.TrainingPipelineContext;
+import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.port.out.FactorPersistencePort;
 import org.hiast.batch.domain.model.ModelFactors;
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Filter that persists the model factors.
  */
-public class FactorPersistenceFilter implements Filter<TrainingPipelineContext, TrainingPipelineContext> {
+public class FactorPersistenceFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
     private static final Logger log = LoggerFactory.getLogger(FactorPersistenceFilter.class);
     
     private final FactorPersistencePort factorPersistence;
@@ -23,7 +23,7 @@ public class FactorPersistenceFilter implements Filter<TrainingPipelineContext, 
     }
     
     @Override
-    public TrainingPipelineContext process(TrainingPipelineContext context) {
+    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
         log.info("Persisting model factors...");
         
         ALSModel model = context.getModel();

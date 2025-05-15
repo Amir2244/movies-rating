@@ -10,7 +10,7 @@ import org.hiast.batch.domain.model.ProcessedRating;
  * Context object that holds the state of the training pipeline.
  * This object is passed through the pipeline and updated by each filter.
  */
-public class TrainingPipelineContext {
+public class ALSTrainingPipelineContext {
     private final SparkSession spark;
     
     private Dataset<Row> rawRatings;
@@ -23,7 +23,7 @@ public class TrainingPipelineContext {
     private boolean factorsPersisted;
     private boolean modelSaved;
     
-    public TrainingPipelineContext(SparkSession spark) {
+    public ALSTrainingPipelineContext(SparkSession spark) {
         this.spark = spark;
     }
     

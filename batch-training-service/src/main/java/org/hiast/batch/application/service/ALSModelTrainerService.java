@@ -2,7 +2,7 @@ package org.hiast.batch.application.service;
 
 import org.apache.spark.sql.SparkSession;
 import org.hiast.batch.application.pipeline.Pipeline;
-import org.hiast.batch.application.pipeline.TrainingPipelineContext;
+import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.pipeline.filters.*;
 import org.hiast.batch.application.port.in.TrainingModelUseCase;
 import org.hiast.batch.application.port.out.FactorPersistencePort;
@@ -45,10 +45,10 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
 
         try {
             // Create the pipeline context
-            TrainingPipelineContext context = new TrainingPipelineContext(spark);
+            ALSTrainingPipelineContext context = new ALSTrainingPipelineContext(spark);
 
             // Create the pipeline with all filters
-            Pipeline<TrainingPipelineContext, TrainingPipelineContext> pipeline = new Pipeline<>(TrainingPipelineContext.class);
+            Pipeline<ALSTrainingPipelineContext, ALSTrainingPipelineContext> pipeline = new Pipeline<>(ALSTrainingPipelineContext.class);
 
             // Add filters to the pipeline
             pipeline.addFilter(new DataLoadingFilter(ratingDataProvider))
@@ -60,7 +60,7 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
                    .addFilter(new ModelSavingFilter(hdfsConfig));
 
             // Execute the pipeline
-            TrainingPipelineContext result = pipeline.execute(context);
+            ALSTrainingPipelineContext result = pipeline.execute(context);
 
             // Check the result
             if (result.isModelSaved() && result.isFactorsPersisted()) {

@@ -4,17 +4,15 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.storage.StorageLevel;
 import org.hiast.batch.application.pipeline.Filter;
-import org.hiast.batch.application.pipeline.TrainingPipelineContext;
+import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.config.ALSConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-
 /**
  * Filter that splits the preprocessed data into training and test sets.
  */
-public class DataSplittingFilter implements Filter<TrainingPipelineContext, TrainingPipelineContext> {
+public class DataSplittingFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
     private static final Logger log = LoggerFactory.getLogger(DataSplittingFilter.class);
     
     private final ALSConfig alsConfig;
@@ -24,7 +22,7 @@ public class DataSplittingFilter implements Filter<TrainingPipelineContext, Trai
     }
     
     @Override
-    public TrainingPipelineContext process(TrainingPipelineContext context) {
+    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
         log.info("Splitting 'ratingsDf' (DataFrame) into training and test DataFrames...");
         
         Dataset<Row> ratingsDf = context.getRatingsDf();

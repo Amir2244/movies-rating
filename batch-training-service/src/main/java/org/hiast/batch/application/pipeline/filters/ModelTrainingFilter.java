@@ -5,7 +5,7 @@ import org.apache.spark.ml.recommendation.ALSModel;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.hiast.batch.application.pipeline.Filter;
-import org.hiast.batch.application.pipeline.TrainingPipelineContext;
+import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.config.ALSConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Filter that trains the ALS model using the training data.
  */
-public class ModelTrainingFilter implements Filter<TrainingPipelineContext, TrainingPipelineContext> {
+public class ModelTrainingFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
     private static final Logger log = LoggerFactory.getLogger(ModelTrainingFilter.class);
     
     private final ALSConfig alsConfig;
@@ -23,7 +23,7 @@ public class ModelTrainingFilter implements Filter<TrainingPipelineContext, Trai
     }
     
     @Override
-    public TrainingPipelineContext process(TrainingPipelineContext context) {
+    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
         log.info("Training ALS model with params: Rank={}, MaxIter={}, RegParam={}, Seed={}",
                 alsConfig.getRank(), alsConfig.getMaxIter(), alsConfig.getRegParam(),
                 alsConfig.getSeed());

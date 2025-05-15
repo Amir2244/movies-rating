@@ -2,7 +2,7 @@ package org.hiast.batch.application.pipeline.filters;
 
 import org.apache.spark.ml.recommendation.ALSModel;
 import org.hiast.batch.application.pipeline.Filter;
-import org.hiast.batch.application.pipeline.TrainingPipelineContext;
+import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.config.HDFSConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +12,7 @@ import java.io.IOException;
 /**
  * Filter that saves the trained model to HDFS.
  */
-public class ModelSavingFilter implements Filter<TrainingPipelineContext, TrainingPipelineContext> {
+public class ModelSavingFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
     private static final Logger log = LoggerFactory.getLogger(ModelSavingFilter.class);
 
     private final HDFSConfig hdfsConfig;
@@ -22,7 +22,7 @@ public class ModelSavingFilter implements Filter<TrainingPipelineContext, Traini
     }
 
     @Override
-    public TrainingPipelineContext process(TrainingPipelineContext context) {
+    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
         log.info("Saving ALS model to HDFS...");
 
         ALSModel model = context.getModel();

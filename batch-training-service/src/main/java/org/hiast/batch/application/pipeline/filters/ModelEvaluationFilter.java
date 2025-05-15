@@ -5,7 +5,7 @@ import org.apache.spark.ml.recommendation.ALSModel;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.hiast.batch.application.pipeline.Filter;
-import org.hiast.batch.application.pipeline.TrainingPipelineContext;
+import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,11 +14,11 @@ import java.util.Arrays;
 /**
  * Filter that evaluates the trained model using the test data.
  */
-public class ModelEvaluationFilter implements Filter<TrainingPipelineContext, TrainingPipelineContext> {
+public class ModelEvaluationFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
     private static final Logger log = LoggerFactory.getLogger(ModelEvaluationFilter.class);
     
     @Override
-    public TrainingPipelineContext process(TrainingPipelineContext context) {
+    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
         Dataset<Row> testData = context.getTestData();
         ALSModel model = context.getModel();
         

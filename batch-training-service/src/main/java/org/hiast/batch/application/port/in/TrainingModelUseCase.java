@@ -1,6 +1,6 @@
 package org.hiast.batch.application.port.in;
 
-import org.apache.spark.ml.recommendation.ALSModel;
+
 
 /**
  * Input Port for the use case of training the recommendation model.
