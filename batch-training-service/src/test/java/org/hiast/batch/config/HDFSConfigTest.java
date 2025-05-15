@@ -11,9 +11,10 @@ public class HDFSConfigTest {
     public void testConstructorAndGetter() {
         // Arrange
         String ratingsPath = "/path/to/ratings";
+        String savingPath = "/path/to/save";
 
         // Act
-        HDFSConfig config = new HDFSConfig(ratingsPath);
+        HDFSConfig config = new HDFSConfig(ratingsPath, savingPath);
 
         // Assert
         assertEquals(ratingsPath, config.getRatingsPath());
@@ -23,7 +24,8 @@ public class HDFSConfigTest {
     public void testToString() {
         // Arrange
         String ratingsPath = "/path/to/ratings";
-        HDFSConfig config = new HDFSConfig(ratingsPath);
+        String savingPath = "/path/to/save";
+        HDFSConfig config = new HDFSConfig(ratingsPath, savingPath);
 
         // Act
         String result = config.toString();
