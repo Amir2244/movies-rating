@@ -5,8 +5,16 @@
         </encoder>
     </appender>
 
-    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>logs/spark-application.log</file>
+    <appender name="APP_FILE" class="ch.qos.logback.core.FileAppender">
+        <file>/opt/spark-apps/logs/spark-application.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="SPARK_FILE" class="ch.qos.logback.core.FileAppender">
+        <file>/opt/spark/logs/spark-internal.log</file>
         <append>true</append>
         <encoder>
             <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
@@ -14,7 +22,9 @@
     </appender>
 
     <logger name="org.hiast.batch" level="INFO"/>
-    <logger name="org.apache.spark" level="INFO"/>
+    <logger name="org.apache.spark" level="INFO">
+        <appender-ref ref="SPARK_FILE"/>
+    </logger>
     <logger name="org.eclipse.jetty" level="WARN"/>
 
     <root level="INFO">
