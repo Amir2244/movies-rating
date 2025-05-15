@@ -237,7 +237,7 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
     public void saveModelToHDFS(ALSModel model, String path) {
         try {
             log.info("Saving ALS model to HDFS at path: {}", path);
-            model.save(path);
+            model.write().overwrite().save(path);
             log.info("ALS model saved successfully to HDFS.");
         } catch (IOException e) {
             log.error("Failed to save ALS model to HDFS at path: {}", path, e);
