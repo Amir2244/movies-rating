@@ -5,7 +5,7 @@ import org.hiast.batch.application.pipeline.Pipeline;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.pipeline.filters.*;
 import org.hiast.batch.application.port.in.TrainingModelUseCase;
-import org.hiast.batch.application.port.out.FactorPersistencePort;
+import org.hiast.batch.application.port.out.FactorCachingPort;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
 import org.hiast.batch.config.ALSConfig;
 import org.hiast.batch.config.HDFSConfig;
@@ -23,13 +23,13 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
 
     private final SparkSession spark;
     private final RatingDataProviderPort ratingDataProvider;
-    private final FactorPersistencePort factorPersistence;
+    private final FactorCachingPort factorPersistence;
     private final ALSConfig alsConfig;
     private final HDFSConfig hdfsConfig;
 
     public ALSModelTrainerService(SparkSession spark,
                                   RatingDataProviderPort ratingDataProvider,
-                                  FactorPersistencePort factorPersistence,
+                                  FactorCachingPort factorPersistence,
                                   ALSConfig alsConfig,
                                   HDFSConfig hdfsConfig) {
         this.spark = spark;
@@ -57,7 +57,8 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
                    .addFilter(new ModelTrainingFilter(alsConfig))
                    .addFilter(new ModelEvaluationFilter())
                    .addFilter(new FactorPersistenceFilter(factorPersistence))
-                   .addFilter(new ModelSavingFilter(hdfsConfig));
+                   .addFilter(new ModelSavingFilter(hdfsConfig))
+                    .addFilter(new ResultSavingFilter());
 
             // Execute the pipeline
             ALSTrainingPipelineContext result = pipeline.execute(context);

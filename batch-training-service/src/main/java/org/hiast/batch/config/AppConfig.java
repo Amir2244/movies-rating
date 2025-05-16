@@ -3,6 +3,7 @@ package org.hiast.batch.config;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +64,10 @@ public class AppConfig {
                 Double.parseDouble(properties.getProperty("als.alpha", "1.0")),
                 Double.parseDouble(properties.getProperty("als.trainingSplitRatio", "1.0"))
         );
+    }
+
+    public MongoConfig getMongoConfig() {
+        return null;
     }
 
     @Override

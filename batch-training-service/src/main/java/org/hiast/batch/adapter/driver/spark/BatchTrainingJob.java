@@ -4,10 +4,10 @@ package org.hiast.batch.adapter.driver.spark;
 import org.apache.spark.SparkConf;
 import org.apache.spark.memory.SparkOutOfMemoryError;
 import org.apache.spark.sql.SparkSession;
+import org.hiast.batch.adapter.out.memory.redis.RedisFactorCachingAdapter;
 import org.hiast.batch.adapter.out.persistence.hdfs.HdfsRatingDataProviderAdapter;
-import org.hiast.batch.adapter.out.persistence.redis.RedisFactorPersistenceAdapter;
 import org.hiast.batch.application.port.in.TrainingModelUseCase;
-import org.hiast.batch.application.port.out.FactorPersistencePort;
+import org.hiast.batch.application.port.out.FactorCachingPort;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
 import org.hiast.batch.application.service.ALSModelTrainerService;
 import org.hiast.batch.config.ALSConfig;
@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.Collections;
 
 /**
  * Main entry point for the Spark batch training job.
@@ -65,7 +64,7 @@ public final class BatchTrainingJob {
 
         // --- 3. Instantiate Adapters (Infrastructure Layer Implementations) ---
         RatingDataProviderPort ratingDataProvider = new HdfsRatingDataProviderAdapter(hdfsConfig.getRatingsPath());
-        FactorPersistencePort factorPersistence = new RedisFactorPersistenceAdapter(redisConfig.getHost(), redisConfig.getPort());
+        FactorCachingPort factorPersistence = new RedisFactorCachingAdapter(redisConfig.getHost(), redisConfig.getPort());
         log.info("Infrastructure adapters instantiated.");
 
         // --- 4. Instantiate Application Service (Use Case Implementation) ---

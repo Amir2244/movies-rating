@@ -7,7 +7,7 @@ import org.hiast.batch.domain.model.ModelFactors;
  * Output Port defining how to persist the computed user and item factors.
  * Implementations (adapters) will handle specific persistence stores like Redis.
  */
-public interface FactorPersistencePort {
+public interface FactorCachingPort {
     /**
      * Saves the user and item factors.
      *

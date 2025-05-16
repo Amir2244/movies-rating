@@ -1,10 +1,10 @@
-package org.hiast.batch.adapter.out.persistence.redis;
+package org.hiast.batch.adapter.out.memory.redis;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.api.java.function.ForeachPartitionFunction;
 import org.hiast.batch.domain.model.ModelFactors;
-import org.hiast.batch.application.port.out.FactorPersistencePort;
+import org.hiast.batch.application.port.out.FactorCachingPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,19 +23,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import scala.collection.Iterator;
 import scala.collection.Seq;
 
-public class RedisFactorPersistenceAdapter implements FactorPersistencePort {
+public class RedisFactorCachingAdapter implements FactorCachingPort {
 
-    private static final Logger log = LoggerFactory.getLogger(RedisFactorPersistenceAdapter.class);
+    private static final Logger log = LoggerFactory.getLogger(RedisFactorCachingAdapter.class);
 
 
     private final String redisHost;
     private final int redisPort;
 
 
-    public RedisFactorPersistenceAdapter(String redisHost, int redisPort /*, String redisPassword */) {
+    public RedisFactorCachingAdapter(String redisHost, int redisPort /*, String redisPassword */) {
         this.redisHost = redisHost;
         this.redisPort = redisPort;
-        log.info("RedisFactorPersistenceAdapter initialized with host: {}, port: {}", redisHost, redisPort);
+        log.info("RedisFactorCachingAdapter initialized with host: {}, port: {}", redisHost, redisPort);
     }
 
     @Override
@@ -52,7 +52,7 @@ public class RedisFactorPersistenceAdapter implements FactorPersistencePort {
 
     /**
      * Static nested class to process each partition and save factors to Redis.
-     * This class is static to prevent capturing the outer RedisFactorPersistenceAdapter instance.
+     * This class is static to prevent capturing the outer RedisFactorCachingAdapter instance.
      * It must be Serializable itself, and all its fields must be serializable.
      */
     private static class RedisPartitionProcessor implements ForeachPartitionFunction<Row>, Serializable {
