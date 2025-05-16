@@ -89,6 +89,15 @@ services:
       - ./docker-volumes/redis_data:/data
     networks:
       - app-network
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./docker-volumes/mongo_data:/data/db
+    networks:
+      - app-network
 
 volumes:
   namenode_data:
@@ -98,7 +107,7 @@ volumes:
   spark_master_spark_logs:
   spark_worker_app_logs:
   spark_worker_daemon_logs:
-
+  mongo_data:
 
 networks:
   app-network:
