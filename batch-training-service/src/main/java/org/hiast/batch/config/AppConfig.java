@@ -67,7 +67,12 @@ public class AppConfig {
     }
 
     public MongoConfig getMongoConfig() {
-        return null;
+        return new MongoConfig(
+                properties.getProperty("mongodb.host", "mongodb"),
+                Integer.parseInt(properties.getProperty("mongodb.port", "27017")),
+                properties.getProperty("mongodb.database", "movie-recommendations"),
+                properties.getProperty("mongodb.collection.recommendations", "user-recommendations")
+        );
     }
 
     @Override
@@ -75,9 +80,10 @@ public class AppConfig {
         return "AppConfig{" +
                 "sparkAppName='" + getSparkAppName() + '\'' +
                 ", sparkMasterUrl='" + getSparkMasterUrl() + '\'' +
-                ", gcsConfig=" + getHDFSConfig() +
+                ", hdfsConfig=" + getHDFSConfig() +
                 ", redisConfig=" + getRedisConfig() +
                 ", alsConfig=" + getALSConfig() +
+                ", mongoConfig=" + getMongoConfig() +
                 '}';
     }
 }
