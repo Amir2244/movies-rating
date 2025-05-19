@@ -90,7 +90,28 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
             List<MovieRecommendation> movieRecommendations = new ArrayList<>();
             for (Row rec : recommendations) {
                 int movieId = rec.getInt(0);
-                float rating = (float) rec.getDouble(1);
+                float rating;
+                try {
+                    // Try to get as double first
+                    rating = (float) rec.getDouble(1);
+                } catch (ClassCastException e) {
+                    // If that fails, try to get as float
+                    try {
+                        rating = rec.getFloat(1);
+                    } catch (Exception e2) {
+                        // As a last resort, get the object and convert it
+                        Object ratingObj = rec.get(1);
+                        if (ratingObj instanceof Double) {
+                            rating = ((Double) ratingObj).floatValue();
+                        } else if (ratingObj instanceof Float) {
+                            rating = (Float) ratingObj;
+                        } else if (ratingObj instanceof Integer) {
+                            rating = ((Integer) ratingObj).floatValue();
+                        } else {
+                            rating = Float.parseFloat(ratingObj.toString());
+                        }
+                    }
+                }
 
                 MovieRecommendation movieRec = new MovieRecommendation(userId, movieId, rating, now);
                 movieRecommendations.add(movieRec);
