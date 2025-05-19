@@ -5,6 +5,7 @@ import org.hiast.batch.application.pipeline.Pipeline;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.pipeline.filters.*;
 import org.hiast.batch.application.port.in.TrainingModelUseCase;
+import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
 import org.hiast.batch.application.port.out.FactorCachingPort;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
 import org.hiast.batch.application.port.out.ResultPersistencePort;
@@ -26,6 +27,7 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
     private final RatingDataProviderPort ratingDataProvider;
     private final FactorCachingPort factorPersistence;
     private final ResultPersistencePort resultPersistence;
+    private final AnalyticsPersistencePort analyticsPersistence;
     private final ALSConfig alsConfig;
     private final HDFSConfig hdfsConfig;
 
@@ -33,12 +35,14 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
                                   RatingDataProviderPort ratingDataProvider,
                                   FactorCachingPort factorPersistence,
                                   ResultPersistencePort resultPersistence,
+                                  AnalyticsPersistencePort analyticsPersistence,
                                   ALSConfig alsConfig,
                                   HDFSConfig hdfsConfig) {
         this.spark = spark;
         this.ratingDataProvider = ratingDataProvider;
         this.factorPersistence = factorPersistence;
         this.resultPersistence = resultPersistence;
+        this.analyticsPersistence = analyticsPersistence;
         this.alsConfig = alsConfig;
         this.hdfsConfig = hdfsConfig;
     }
@@ -57,6 +61,8 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
             // Add filters to the pipeline
             pipeline.addFilter(new DataLoadingFilter(ratingDataProvider))
                    .addFilter(new DataPreprocessingFilter(ratingDataProvider))
+                   // Add the data analytics filter after preprocessing
+                   .addFilter(new DataAnalyticsFilter(analyticsPersistence))
                    .addFilter(new DataSplittingFilter(alsConfig))
                    .addFilter(new ModelTrainingFilter(alsConfig))
                    .addFilter(new ModelEvaluationFilter())

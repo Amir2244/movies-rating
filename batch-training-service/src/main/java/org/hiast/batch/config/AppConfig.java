@@ -71,7 +71,8 @@ public class AppConfig {
                 properties.getProperty("mongodb.host", "mongodb"),
                 Integer.parseInt(properties.getProperty("mongodb.port", "27017")),
                 properties.getProperty("mongodb.database", "movie-recommendations"),
-                properties.getProperty("mongodb.collection.recommendations", "user-recommendations")
+                properties.getProperty("mongodb.collection.recommendations", "user-recommendations"),
+                properties.getProperty("mongodb.collection.analytics", "data-analytics")
         );
     }
 
