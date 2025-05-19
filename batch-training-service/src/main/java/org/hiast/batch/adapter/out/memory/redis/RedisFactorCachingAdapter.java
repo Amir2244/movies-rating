@@ -1,13 +1,18 @@
 package org.hiast.batch.adapter.out.memory.redis;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.spark.api.java.function.ForeachPartitionFunction;
+import org.apache.spark.ml.linalg.Vector;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.apache.spark.api.java.function.ForeachPartitionFunction;
-import org.hiast.batch.domain.model.ModelFactors;
 import org.hiast.batch.application.port.out.FactorCachingPort;
+import org.hiast.batch.domain.model.ModelFactors;
+import org.hiast.ids.MovieId;
+import org.hiast.ids.UserId;
+import org.hiast.model.factors.ItemFactor;
+import org.hiast.model.factors.UserFactor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.exceptions.JedisException;
@@ -15,10 +20,6 @@ import redis.clients.jedis.exceptions.JedisException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.spark.ml.linalg.Vector;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 
 import scala.collection.Iterator;
 import scala.collection.Seq;
@@ -40,14 +41,17 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
 
     @Override
     public void saveModelFactors(ModelFactors modelFactors) {
-        log.info("Saving user factors to Redis...");
-        saveFactors(modelFactors.getUserFactors(), "userFactors",
-                "userId", redisHost, redisPort /*, redisPassword */);
-        log.info("User factors saved.");
-        log.info("Saving item factors to Redis...");
-        saveFactors(modelFactors.getItemFactors(), "itemFactors",
-                "itemId", redisHost, redisPort /*, redisPassword */);
-        log.info("Item factors saved.");
+        if (modelFactors.hasGenericFactorRepresentations()) {
+            log.info("Saving generic factor models to Redis...");
+            saveGenericUserFactors(modelFactors.getUserFactors());
+            saveGenericItemFactors(modelFactors.getItemFactors());
+        } else if (modelFactors.hasDatasetRepresentations()) {
+            log.info("Saving Dataset factor representations to Redis...");
+            saveDatasetFactors(modelFactors.getUserFactorsDataset(), "userFactors", "userId");
+            saveDatasetFactors(modelFactors.getItemFactorsDataset(), "itemFactors", "itemId");
+        } else {
+            log.warn("ModelFactors has neither generic nor Dataset representations. Nothing to save.");
+        }
     }
 
     /**
@@ -157,10 +161,12 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
 
     /**
      * Saves factors from a Dataset to Redis.
+     *
+     * @param factorsDataset The Dataset containing factors
+     * @param redisKeyPrefix The prefix for Redis keys
+     * @param idColumnName The name of the ID column in the Dataset
      */
-    private void saveFactors(Dataset<Row> factorsDataset, String redisKeyPrefix,
-                             String idColumnName,
-                             String host, int port /*, String password */) {
+    private void saveDatasetFactors(Dataset<Row> factorsDataset, String redisKeyPrefix, String idColumnName) {
         if (factorsDataset == null || factorsDataset.isEmpty()) {
             log.warn("Factors dataset for {} is null or empty. Skipping save.", redisKeyPrefix);
             return;
@@ -172,10 +178,108 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
         factorsDataset.show(5, false);
 
         RedisPartitionProcessor processor = new RedisPartitionProcessor(
-                host, port, /* password, */ redisKeyPrefix, idColumnName, "features"
+                redisHost, redisPort, /* password, */ redisKeyPrefix, idColumnName, "features"
         );
 
         factorsDataset.foreachPartition(processor);
         log.info("Finished foreachPartition call for {}", redisKeyPrefix);
+    }
+
+    /**
+     * Saves generic user factors to Redis.
+     *
+     * @param userFactors List of UserFactor objects
+     */
+    private void saveGenericUserFactors(List<UserFactor<float[]>> userFactors) {
+        if (userFactors == null || userFactors.isEmpty()) {
+            log.warn("User factors list is null or empty. Skipping save.");
+            return;
+        }
+
+        log.info("Saving {} user factors to Redis...", userFactors.size());
+
+        try (Jedis jedis = new Jedis(redisHost, redisPort)) {
+            Pipeline pipeline = jedis.pipelined();
+            ObjectMapper objectMapper = new ObjectMapper();
+            int batchSize = 1000;
+            int count = 0;
+
+            for (UserFactor<float[]> userFactor : userFactors) {
+                try {
+                    int userId = userFactor.getId().getUserId();
+                    float[] features = userFactor.getFeatures();
+
+                    // Convert features to JSON
+                    String featuresJson = objectMapper.writeValueAsString(features);
+
+                    // Save to Redis
+                    String redisKey = "userFactors:" + userId;
+                    pipeline.set(redisKey, featuresJson);
+
+                    count++;
+                    if (count % batchSize == 0) {
+                        pipeline.sync();
+                        log.debug("Synced Redis pipeline after {} user factors", count);
+                    }
+                } catch (Exception e) {
+                    log.error("Error saving user factor: {}", e.getMessage(), e);
+                }
+            }
+
+            // Final sync
+            pipeline.sync();
+            log.info("Successfully saved {} user factors to Redis", count);
+        } catch (Exception e) {
+            log.error("Error connecting to Redis: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Saves generic item factors to Redis.
+     *
+     * @param itemFactors List of ItemFactor objects
+     */
+    private void saveGenericItemFactors(List<ItemFactor<float[]>> itemFactors) {
+        if (itemFactors == null || itemFactors.isEmpty()) {
+            log.warn("Item factors list is null or empty. Skipping save.");
+            return;
+        }
+
+        log.info("Saving {} item factors to Redis...", itemFactors.size());
+
+        try (Jedis jedis = new Jedis(redisHost, redisPort)) {
+            Pipeline pipeline = jedis.pipelined();
+            ObjectMapper objectMapper = new ObjectMapper();
+            int batchSize = 1000;
+            int count = 0;
+
+            for (ItemFactor<float[]> itemFactor : itemFactors) {
+                try {
+                    int itemId = itemFactor.getId().getMovieId();
+                    float[] features = itemFactor.getFeatures();
+
+                    // Convert features to JSON
+                    String featuresJson = objectMapper.writeValueAsString(features);
+
+                    // Save to Redis
+                    String redisKey = "itemFactors:" + itemId;
+                    pipeline.set(redisKey, featuresJson);
+
+                    count++;
+                    if (count % batchSize == 0) {
+                        pipeline.sync();
+                        log.debug("Synced Redis pipeline after {} item factors", count);
+                    }
+                } catch (Exception e) {
+                    log.error("Error saving item factor: {}", e.getMessage(), e);
+                }
+            }
+
+            // Final sync
+            pipeline.sync();
+            log.info("Successfully saved {} item factors to Redis", count);
+        } catch (Exception e) {
+            log.error("Error connecting to Redis: {}", e.getMessage(), e);
+        }
     }
 }
