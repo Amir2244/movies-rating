@@ -25,7 +25,7 @@ import java.util.concurrent.Executors;
  */
 public class HealthCheckServer {
     private static final Logger log = LoggerFactory.getLogger(HealthCheckServer.class);
-    private static final int DEFAULT_PORT = 8080;
+    private static final int DEFAULT_PORT = 8085;
     private final HttpServer server;
     private final AppConfig appConfig;
 
