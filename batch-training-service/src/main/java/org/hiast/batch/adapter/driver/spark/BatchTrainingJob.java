@@ -4,25 +4,32 @@ package org.hiast.batch.adapter.driver.spark;
 import org.apache.spark.SparkConf;
 import org.apache.spark.memory.SparkOutOfMemoryError;
 import org.apache.spark.sql.SparkSession;
+import org.hiast.batch.adapter.out.memory.redis.RedisFactorCachingAdapter;
 import org.hiast.batch.adapter.out.persistence.hdfs.HdfsRatingDataProviderAdapter;
-import org.hiast.batch.adapter.out.persistence.redis.RedisFactorPersistenceAdapter;
+import org.hiast.batch.adapter.out.persistence.mongodb.MongoAnalyticsPersistenceAdapter;
+import org.hiast.batch.adapter.out.persistence.mongodb.MongoResultPersistenceAdapter;
 import org.hiast.batch.application.port.in.TrainingModelUseCase;
-import org.hiast.batch.application.port.out.FactorPersistencePort;
+import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
+import org.hiast.batch.application.port.out.FactorCachingPort;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
+import org.hiast.batch.application.port.out.ResultPersistencePort;
 import org.hiast.batch.application.service.ALSModelTrainerService;
 import org.hiast.batch.config.ALSConfig;
 import org.hiast.batch.config.AppConfig;
 import org.hiast.batch.config.HDFSConfig;
+import org.hiast.batch.config.MongoConfig;
 import org.hiast.batch.config.RedisConfig;
+import org.hiast.batch.domain.model.ModelFactors;
 import org.hiast.batch.domain.model.ProcessedRating;
 import org.hiast.ids.MovieId;
 import org.hiast.ids.UserId;
 import org.hiast.model.RatingValue;
+import org.hiast.model.factors.ItemFactor;
+import org.hiast.model.factors.UserFactor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.Collections;
 
 /**
  * Main entry point for the Spark batch training job.
@@ -40,6 +47,7 @@ public final class BatchTrainingJob {
         AppConfig appConfig = new AppConfig();
         HDFSConfig hdfsConfig = appConfig.getHDFSConfig();
         RedisConfig redisConfig = appConfig.getRedisConfig();
+        MongoConfig mongoConfig = appConfig.getMongoConfig();
         ALSConfig alsConfig = appConfig.getALSConfig();
 
         log.info("Application Configuration Loaded: {}", appConfig);
@@ -56,7 +64,7 @@ public final class BatchTrainingJob {
                 .set("spark.default.parallelism", "12")
                 .set("spark.sql.shuffle.partitions", "12")
                 .registerKryoClasses(Arrays.asList(ProcessedRating.class, UserId.class, MovieId.class,
-                        RatingValue.class).toArray(new Class[4]))
+                        RatingValue.class, UserFactor.class, ItemFactor.class, ModelFactors.class).toArray(new Class[7]))
                 .setMaster(appConfig.getSparkMasterUrl());
 
         SparkSession spark = SparkSession.builder().config(sparkConf).getOrCreate();
@@ -65,7 +73,9 @@ public final class BatchTrainingJob {
 
         // --- 3. Instantiate Adapters (Infrastructure Layer Implementations) ---
         RatingDataProviderPort ratingDataProvider = new HdfsRatingDataProviderAdapter(hdfsConfig.getRatingsPath());
-        FactorPersistencePort factorPersistence = new RedisFactorPersistenceAdapter(redisConfig.getHost(), redisConfig.getPort());
+        FactorCachingPort factorPersistence = new RedisFactorCachingAdapter(redisConfig.getHost(), redisConfig.getPort());
+        ResultPersistencePort resultPersistence = new MongoResultPersistenceAdapter(mongoConfig);
+        AnalyticsPersistencePort analyticsPersistence = new MongoAnalyticsPersistenceAdapter(mongoConfig);
         log.info("Infrastructure adapters instantiated.");
 
         // --- 4. Instantiate Application Service (Use Case Implementation) ---
@@ -73,6 +83,8 @@ public final class BatchTrainingJob {
                 spark,
                 ratingDataProvider,
                 factorPersistence,
+                resultPersistence,
+                analyticsPersistence,
                 alsConfig,
                 hdfsConfig
         );

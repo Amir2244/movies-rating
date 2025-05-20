@@ -15,27 +15,27 @@ import org.slf4j.LoggerFactory;
  */
 public class ModelTrainingFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
     private static final Logger log = LoggerFactory.getLogger(ModelTrainingFilter.class);
-    
+
     private final ALSConfig alsConfig;
-    
+
     public ModelTrainingFilter(ALSConfig alsConfig) {
         this.alsConfig = alsConfig;
     }
-    
+
     @Override
     public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
         log.info("Training ALS model with params: Rank={}, MaxIter={}, RegParam={}, Seed={}",
                 alsConfig.getRank(), alsConfig.getMaxIter(), alsConfig.getRegParam(),
                 alsConfig.getSeed());
-        
+
         Dataset<Row> trainingData = context.getTrainingData();
-        
+
         String userCol = "userId";
         String itemCol = "movieId";
         String ratingCol = "ratingActual";
-        
+
         log.info("Using column names for ALS: userCol={}, itemCol={}, ratingCol={}", userCol, itemCol, ratingCol);
-        
+
         ALS als = new ALS()
                 .setMaxIter(alsConfig.getMaxIter())
                 .setRegParam(alsConfig.getRegParam())
@@ -47,13 +47,14 @@ public class ModelTrainingFilter implements Filter<ALSTrainingPipelineContext, A
                 .setSeed(alsConfig.getSeed())
                 .setImplicitPrefs(alsConfig.isImplicitPrefs())
                 .setAlpha(alsConfig.getAlpha());
-        
+
         ALSModel model = als.fit(trainingData);
         log.info("ALS model training completed.");
-        
+        model.recommendForAllUsers(1).show();
+        model.recommendForAllItems(1).show();
         // Set the model in the context
         context.setModel(model);
-        
+
         return context;
     }
 }

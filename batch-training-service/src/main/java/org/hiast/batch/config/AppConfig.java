@@ -3,6 +3,7 @@ package org.hiast.batch.config;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,14 +66,25 @@ public class AppConfig {
         );
     }
 
+    public MongoConfig getMongoConfig() {
+        return new MongoConfig(
+                properties.getProperty("mongodb.host", "mongodb"),
+                Integer.parseInt(properties.getProperty("mongodb.port", "27017")),
+                properties.getProperty("mongodb.database", "movie-recommendations"),
+                properties.getProperty("mongodb.collection.recommendations", "user-recommendations"),
+                properties.getProperty("mongodb.collection.analytics", "data-analytics")
+        );
+    }
+
     @Override
     public String toString() {
         return "AppConfig{" +
                 "sparkAppName='" + getSparkAppName() + '\'' +
                 ", sparkMasterUrl='" + getSparkMasterUrl() + '\'' +
-                ", gcsConfig=" + getHDFSConfig() +
+                ", hdfsConfig=" + getHDFSConfig() +
                 ", redisConfig=" + getRedisConfig() +
                 ", alsConfig=" + getALSConfig() +
+                ", mongoConfig=" + getMongoConfig() +
                 '}';
     }
 }
