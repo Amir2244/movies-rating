@@ -7,6 +7,7 @@ import org.apache.spark.sql.Row;
 import org.hiast.batch.application.pipeline.Filter;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.port.out.FactorCachingPort;
+import org.hiast.batch.domain.exception.ModelPersistenceException;
 import org.hiast.batch.domain.model.ModelFactors;
 import org.hiast.ids.MovieId;
 import org.hiast.ids.UserId;
@@ -38,7 +39,7 @@ public class FactorPersistenceFilter implements Filter<ALSTrainingPipelineContex
 
         if (model == null) {
             log.error("Model is null. Cannot persist factors.");
-            throw new RuntimeException("Model is null. Cannot persist factors.");
+            throw new ModelPersistenceException("Model is null. Cannot persist factors. Check if model training completed successfully.");
         }
 
         // Get Spark Dataset representations

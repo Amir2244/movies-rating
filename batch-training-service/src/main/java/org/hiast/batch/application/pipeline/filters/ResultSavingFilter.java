@@ -6,6 +6,7 @@ import org.apache.spark.sql.Row;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.pipeline.Filter;
 import org.hiast.batch.application.port.out.ResultPersistencePort;
+import org.hiast.batch.domain.exception.ModelPersistenceException;
 import org.hiast.batch.domain.model.MovieRecommendation;
 import org.hiast.batch.domain.model.UserRecommendations;
 import org.slf4j.Logger;
@@ -37,7 +38,7 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
 
         if (model == null) {
             log.error("Model is null. Cannot generate and save recommendations.");
-            throw new RuntimeException("Model is null. Cannot generate and save recommendations.");
+            throw new ModelPersistenceException("Model is null. Cannot generate and save recommendations. Check if model training completed successfully.");
         }
 
         try {
@@ -66,7 +67,7 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
 
         } catch (Exception e) {
             log.error("Error saving recommendation results: {}", e.getMessage(), e);
-            throw new RuntimeException("Error saving recommendation results", e);
+            throw new ModelPersistenceException("Error saving recommendation results", e);
         }
 
         return context;
