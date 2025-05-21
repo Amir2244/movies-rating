@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.hiast.batch.domain.exception.ConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,14 +22,14 @@ public class AppConfig {
         properties = new Properties();
         try (InputStream input = getClass().getClassLoader().getResourceAsStream(CONFIG_FILE)) {
             if (input == null) {
-                log.error("Sorry, unable to find " + CONFIG_FILE);
-                throw new RuntimeException("Configuration file " + CONFIG_FILE + " not found in classpath.");
+                log.error("Unable to find configuration file: {}", CONFIG_FILE);
+                throw new ConfigurationException("Configuration file " + CONFIG_FILE + " not found in classpath.");
             }
             properties.load(input);
             log.info("Application configuration loaded successfully from {}", CONFIG_FILE);
         } catch (IOException ex) {
-            log.error("Error loading configuration file " + CONFIG_FILE, ex);
-            throw new RuntimeException("Error loading configuration file " + CONFIG_FILE, ex);
+            log.error("Error loading configuration file: {}", CONFIG_FILE, ex);
+            throw new ConfigurationException("Error loading configuration file " + CONFIG_FILE, ex);
         }
     }
 
@@ -38,6 +39,16 @@ public class AppConfig {
 
     public String getSparkMasterUrl() {
         return properties.getProperty("spark.master.url", "spark://spark-master:7077");
+    }
+
+    /**
+     * Gets the properties loaded from the configuration file.
+     * This allows access to all configuration properties.
+     *
+     * @return The properties
+     */
+    public Properties getProperties() {
+        return properties;
     }
 
     public HDFSConfig getHDFSConfig() {

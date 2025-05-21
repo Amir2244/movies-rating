@@ -7,6 +7,7 @@ import org.apache.spark.sql.Row;
 import org.hiast.batch.application.pipeline.Filter;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.config.ALSConfig;
+import org.hiast.batch.domain.exception.ModelTrainingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,12 +49,18 @@ public class ModelTrainingFilter implements Filter<ALSTrainingPipelineContext, A
                 .setImplicitPrefs(alsConfig.isImplicitPrefs())
                 .setAlpha(alsConfig.getAlpha());
 
-        ALSModel model = als.fit(trainingData);
-        log.info("ALS model training completed.");
-        model.recommendForAllUsers(1).show();
-        model.recommendForAllItems(1).show();
-        // Set the model in the context
-        context.setModel(model);
+        try {
+            ALSModel model = als.fit(trainingData);
+            log.info("ALS model training completed.");
+            model.recommendForAllUsers(1).show();
+            model.recommendForAllItems(1).show();
+            // Set the model in the context
+            context.setModel(model);
+            context.markModelTrainingCompleted();
+        } catch (Exception e) {
+            log.error("Error during ALS model training: {}", e.getMessage(), e);
+            throw new ModelTrainingException("Failed to train ALS model", e);
+        }
 
         return context;
     }
