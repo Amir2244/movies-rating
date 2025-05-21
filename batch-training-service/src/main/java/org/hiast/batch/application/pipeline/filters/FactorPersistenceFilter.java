@@ -58,6 +58,7 @@ public class FactorPersistenceFilter implements Filter<ALSTrainingPipelineContex
 
         // Set the factors persisted flag in the context
         context.setFactorsPersisted(true);
+        context.markFactorPersistenceCompleted();
 
         return context;
     }

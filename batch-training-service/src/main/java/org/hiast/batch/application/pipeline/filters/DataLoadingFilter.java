@@ -31,6 +31,7 @@ public class DataLoadingFilter implements Filter<ALSTrainingPipelineContext, ALS
         }
 
         log.info("Raw ratings loaded successfully");
+        context.markDataLoadingCompleted();
         return context;
     }
 }

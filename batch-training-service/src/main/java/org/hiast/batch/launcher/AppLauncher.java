@@ -72,7 +72,7 @@ public class AppLauncher {
      * @param args Command-line arguments
      */
     private static void startHealthCheckServer(String[] args) {
-        int port = 8080; // Default port
+        int port = 8085; // Default port
 
         // Parse arguments
         for (String arg : args) {

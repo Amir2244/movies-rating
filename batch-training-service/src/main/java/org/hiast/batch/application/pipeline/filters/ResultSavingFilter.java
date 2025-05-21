@@ -70,6 +70,7 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
             throw new ModelPersistenceException("Error saving recommendation results", e);
         }
 
+        context.markResultSavingCompleted();
         return context;
     }
 

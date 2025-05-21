@@ -42,6 +42,7 @@ public class ModelSavingFilter implements Filter<ALSTrainingPipelineContext, ALS
             // Set the model-saved flag in the context
             context.setModelSaved(true);
             log.info("Model saved flag set in context with evaluation: {}", context.getEvaluationMetric());
+            context.markModelSavingCompleted();
         } catch (IOException e) {
             log.error("Failed to save ALS model to HDFS at path: {}", path, e);
             throw new ModelPersistenceException("Failed to save ALS model to HDFS at path: " + path, e);

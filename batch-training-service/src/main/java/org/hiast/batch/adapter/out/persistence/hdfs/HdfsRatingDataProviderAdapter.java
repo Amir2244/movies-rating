@@ -77,10 +77,17 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
             log.info("Attempting to load as Parquet format...");
             long startTime = System.nanoTime();
 
+            // Get the number of cores available
+            int numCores = Runtime.getRuntime().availableProcessors();
+            // Use 2x number of cores as a reasonable default for partitions
+            int numPartitions = Math.max(2 * numCores, 4);
+            log.info("Setting number of partitions to {} based on {} available cores", numPartitions, numCores);
+
             Dataset<Row> parquetData = spark.read()
                     .format("parquet")
                     .option("mergeSchema", "true")
-                    .load(ratingsInputHdfsPath);
+                    .load(ratingsInputHdfsPath)
+                    .repartition(numPartitions);
 
             // Cache the data for better performance
             parquetData.persist(StorageLevel.MEMORY_AND_DISK());
@@ -121,13 +128,20 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                         .add("rating", DataTypes.StringType, true)
                         .add("timestamp", DataTypes.StringType, true);
 
+                // Get the number of cores available
+                int numCores = Runtime.getRuntime().availableProcessors();
+                // Use 2x number of cores as a reasonable default for partitions
+                int numPartitions = Math.max(2 * numCores, 4);
+                log.info("Setting number of partitions to {} based on {} available cores", numPartitions, numCores);
+
                 Dataset<Row> csvData = spark.read()
                         .option("header", "true")
                         .option("encoding", StandardCharsets.UTF_8.name())
                         .option("mode", "DROPMALFORMED")  // Drop malformed records
                         .option("nullValue", "")  // Treat empty strings as nulls
                         .schema(ratingsSchema)
-                        .csv(ratingsInputHdfsPath);
+                        .csv(ratingsInputHdfsPath)
+                        .repartition(numPartitions);
 
                 // Cache the data for better performance
                 csvData.persist(StorageLevel.MEMORY_AND_DISK());

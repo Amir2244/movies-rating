@@ -4,6 +4,7 @@ import org.apache.spark.SparkConf;
 import org.hiast.batch.domain.exception.ConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Tuple2;
 
 import java.util.Properties;
 
@@ -41,26 +42,38 @@ public class SparkConfig {
                 .setAppName(appName)
                 .setMaster(masterUrl);
 
-        // Determine environment type based on master URL
+        // Apply any additional properties from configuration file first
+        if (properties != null) {
+            for (String key : properties.stringPropertyNames()) {
+                if (key.startsWith("spark.")) {
+                    conf.set(key, properties.getProperty(key));
+                    log.info("Applied custom Spark property from config: {}={}", key, properties.getProperty(key));
+                }
+            }
+        }
+
+        // Apply environment-specific settings
         if (masterUrl.startsWith("local")) {
+            log.info("Applying local mode settings");
             applyLocalSettings(conf);
         } else if (masterUrl.startsWith("spark://")) {
+            log.info("Applying standalone cluster mode settings");
             applyStandaloneClusterSettings(conf);
         } else if (masterUrl.equals("yarn") || masterUrl.startsWith("yarn-")) {
+            log.info("Applying YARN cluster mode settings");
             applyYarnClusterSettings(conf);
         } else {
             log.warn("Unknown Spark master URL format: {}. Applying default settings.", masterUrl);
             applyDefaultSettings(conf);
         }
 
-        // Apply any additional properties
-        if (properties != null) {
-            for (String key : properties.stringPropertyNames()) {
-                if (key.startsWith("spark.")) {
-                    conf.set(key, properties.getProperty(key));
-                    log.debug("Applied custom Spark property: {}={}", key, properties.getProperty(key));
-                }
-            }
+        // Apply common settings
+        applyCommonSettings(conf);
+
+        // Log all Spark configuration
+        log.info("Final Spark configuration:");
+        for (Tuple2<String, String> entry : conf.getAll()) {
+            log.info("  {} = {}", entry._1(), entry._2());
         }
 
         return conf;
@@ -72,20 +85,26 @@ public class SparkConfig {
      * @param conf The SparkConf to modify
      */
     private void applyLocalSettings(SparkConf conf) {
-        log.info("Applying local mode Spark settings");
-
-        // Memory settings for local mode
-        conf.set("spark.driver.memory", "4g");
-        conf.set("spark.executor.memory", "4g");
-
-        // Serialization settings
-        conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
+        // Memory settings
+        if (!conf.contains("spark.driver.memory")) {
+            conf.set("spark.driver.memory", "4g");
+        }
 
         // Local mode specific settings
-        conf.set("spark.local.dir", System.getProperty("java.io.tmpdir"));
+        if (!conf.contains("spark.local.dir")) {
+            conf.set("spark.local.dir", System.getProperty("java.io.tmpdir"));
+        }
 
-        // Apply common settings
-        applyCommonSettings(conf);
+        // Performance tuning for local mode
+        if (!conf.contains("spark.sql.adaptive.enabled")) {
+            conf.set("spark.sql.adaptive.enabled", "true");
+        }
+        if (!conf.contains("spark.sql.adaptive.coalescePartitions.enabled")) {
+            conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true");
+        }
+        if (!conf.contains("spark.sql.adaptive.skewJoin.enabled")) {
+            conf.set("spark.sql.adaptive.skewJoin.enabled", "true");
+        }
     }
 
     /**
@@ -94,27 +113,32 @@ public class SparkConfig {
      * @param conf The SparkConf to modify
      */
     private void applyStandaloneClusterSettings(SparkConf conf) {
-        log.info("Applying standalone cluster mode Spark settings");
+        // Memory settings
+        if (!conf.contains("spark.driver.memory")) {
+            conf.set("spark.driver.memory", "2g");
+        }
+        if (!conf.contains("spark.executor.memory")) {
+            conf.set("spark.executor.memory", "2g");
+        }
+        if (!conf.contains("spark.executor.cores")) {
+            conf.set("spark.executor.cores", "2");
+        }
 
-        // Memory settings for standalone cluster
-        conf.set("spark.driver.memory", "6g");
-        conf.set("spark.executor.memory", "6g");
-        conf.set("spark.executor.cores", "4");
+        // Deployment mode
+        if (!conf.contains("spark.submit.deployMode")) {
+            conf.set("spark.submit.deployMode", "client");
+        }
 
-        // Dynamic allocation settings - only enable if shuffle service is available
-        if (Boolean.parseBoolean(properties.getProperty("spark.shuffle.service.enabled", "false"))) {
-            conf.set("spark.dynamicAllocation.enabled", "true");
-            conf.set("spark.dynamicAllocation.initialExecutors", "2");
-            conf.set("spark.dynamicAllocation.minExecutors", "1");
-            conf.set("spark.dynamicAllocation.maxExecutors", "10");
-        } else {
-            // Use static allocation if shuffle service is not available
+        // Static allocation settings (default)
+        if (!conf.contains("spark.dynamicAllocation.enabled")) {
             conf.set("spark.dynamicAllocation.enabled", "false");
+        }
+        if (!conf.contains("spark.executor.instances") &&
+            !Boolean.parseBoolean(conf.get("spark.dynamicAllocation.enabled", "false"))) {
             conf.set("spark.executor.instances", "2");
         }
 
-        // Apply common settings
-        applyCommonSettings(conf);
+
     }
 
     /**
@@ -123,33 +147,24 @@ public class SparkConfig {
      * @param conf The SparkConf to modify
      */
     private void applyYarnClusterSettings(SparkConf conf) {
-        log.info("Applying YARN cluster mode Spark settings");
-
-        // Memory settings for YARN cluster
-        conf.set("spark.driver.memory", "8g");
-        conf.set("spark.executor.memory", "8g");
-        conf.set("spark.executor.cores", "4");
-        conf.set("spark.executor.instances", "4");
-
-        // YARN specific settings
-        conf.set("spark.yarn.am.memory", "2g");
-        conf.set("spark.yarn.am.cores", "2");
-
-        // Dynamic allocation settings - only enable if shuffle service is available
-        if (Boolean.parseBoolean(properties.getProperty("spark.shuffle.service.enabled", "false"))) {
-            conf.set("spark.shuffle.service.enabled", "true");
-            conf.set("spark.dynamicAllocation.enabled", "true");
-            conf.set("spark.dynamicAllocation.initialExecutors", "2");
-            conf.set("spark.dynamicAllocation.minExecutors", "1");
-            conf.set("spark.dynamicAllocation.maxExecutors", "20");
-        } else {
-            // Use static allocation if shuffle service is not available
-            conf.set("spark.dynamicAllocation.enabled", "false");
-            conf.set("spark.executor.instances", "4");
+        // Memory settings
+        if (!conf.contains("spark.driver.memory")) {
+            conf.set("spark.driver.memory", "4g");
+        }
+        if (!conf.contains("spark.executor.memory")) {
+            conf.set("spark.executor.memory", "4g");
+        }
+        if (!conf.contains("spark.executor.cores")) {
+            conf.set("spark.executor.cores", "2");
         }
 
-        // Apply common settings
-        applyCommonSettings(conf);
+        // YARN specific settings
+        if (!conf.contains("spark.yarn.am.memory")) {
+            conf.set("spark.yarn.am.memory", "2g");
+        }
+        if (!conf.contains("spark.yarn.am.cores")) {
+            conf.set("spark.yarn.am.cores", "2");
+        }
     }
 
     /**
@@ -158,14 +173,13 @@ public class SparkConfig {
      * @param conf The SparkConf to modify
      */
     private void applyDefaultSettings(SparkConf conf) {
-        log.info("Applying default Spark settings");
-
         // Conservative memory settings
-        conf.set("spark.driver.memory", "4g");
-        conf.set("spark.executor.memory", "4g");
-
-        // Apply common settings
-        applyCommonSettings(conf);
+        if (!conf.contains("spark.driver.memory")) {
+            conf.set("spark.driver.memory", "2g");
+        }
+        if (!conf.contains("spark.executor.memory")) {
+            conf.set("spark.executor.memory", "2g");
+        }
     }
 
     /**
@@ -175,33 +189,60 @@ public class SparkConfig {
      */
     private void applyCommonSettings(SparkConf conf) {
         // Memory management
-        conf.set("spark.memory.fraction", "0.8");
-        conf.set("spark.memory.storageFraction", "0.3");
+        if (!conf.contains("spark.memory.fraction")) {
+            conf.set("spark.memory.fraction", "0.6");
+        }
+        if (!conf.contains("spark.memory.storageFraction")) {
+            conf.set("spark.memory.storageFraction", "0.5");
+        }
 
         // Serialization
-        conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
-        conf.set("spark.kryo.registrationRequired", "false");
-        conf.set("spark.kryo.registrator", "org.hiast.batch.util.CustomKryoRegistrator");
+        if (!conf.contains("spark.serializer")) {
+            conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
+        }
+        if (!conf.contains("spark.kryo.registrationRequired")) {
+            conf.set("spark.kryo.registrationRequired", "false");
+        }
+        if (!conf.contains("spark.kryo.registrator")) {
+            conf.set("spark.kryo.registrator", "org.hiast.batch.util.CustomKryoRegistrator");
+        }
 
         // Shuffle settings
-        conf.set("spark.shuffle.file.buffer", "64k");
-        conf.set("spark.shuffle.spill.compress", "true");
-        conf.set("spark.shuffle.compress", "true");
-        conf.set("spark.shuffle.io.maxRetries", "10");
-        conf.set("spark.shuffle.io.retryWait", "30s");
+        if (!conf.contains("spark.shuffle.file.buffer")) {
+            conf.set("spark.shuffle.file.buffer", "64k");
+        }
+        if (!conf.contains("spark.shuffle.spill.compress")) {
+            conf.set("spark.shuffle.spill.compress", "true");
+        }
+        if (!conf.contains("spark.shuffle.compress")) {
+            conf.set("spark.shuffle.compress", "true");
+        }
+        if (!conf.contains("spark.shuffle.io.maxRetries")) {
+            conf.set("spark.shuffle.io.maxRetries", "10");
+        }
+        if (!conf.contains("spark.shuffle.io.retryWait")) {
+            conf.set("spark.shuffle.io.retryWait", "30s");
+        }
 
         // RDD compression
-        conf.set("spark.rdd.compress", "true");
+        if (!conf.contains("spark.rdd.compress")) {
+            conf.set("spark.rdd.compress", "true");
+        }
 
         // Network timeout
-        conf.set("spark.network.timeout", "800s");
-        conf.set("spark.executor.heartbeatInterval", "60s");
+        if (!conf.contains("spark.network.timeout")) {
+            conf.set("spark.network.timeout", "800s");
+        }
+        if (!conf.contains("spark.executor.heartbeatInterval")) {
+            conf.set("spark.executor.heartbeatInterval", "60s");
+        }
 
         // SQL settings
-        conf.set("spark.sql.shuffle.partitions", "200");
-        conf.set("spark.sql.autoBroadcastJoinThreshold", "10485760"); // 10 MB
-
-        // Speculative execution
-        conf.set("spark.speculation", "true");
+        if (!conf.contains("spark.sql.shuffle.partitions")) {
+            conf.set("spark.sql.shuffle.partitions", "8");
+        }
+        if (!conf.contains("spark.default.parallelism")) {
+            conf.set("spark.default.parallelism", "8");
+        }
     }
 }

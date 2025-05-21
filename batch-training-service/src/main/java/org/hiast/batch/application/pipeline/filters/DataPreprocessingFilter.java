@@ -95,6 +95,7 @@ public class DataPreprocessingFilter implements Filter<ALSTrainingPipelineContex
         log.info("Persisted 'ratingsDf'. Count after persist: {}", ratingsDf.count());
 
         log.info("Data preprocessing completed successfully");
+        context.markPreprocessingCompleted();
         return context;
     }
 }

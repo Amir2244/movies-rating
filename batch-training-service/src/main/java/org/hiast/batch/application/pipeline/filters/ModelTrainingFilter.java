@@ -56,6 +56,7 @@ public class ModelTrainingFilter implements Filter<ALSTrainingPipelineContext, A
             model.recommendForAllItems(1).show();
             // Set the model in the context
             context.setModel(model);
+            context.markModelTrainingCompleted();
         } catch (Exception e) {
             log.error("Error during ALS model training: {}", e.getMessage(), e);
             throw new ModelTrainingException("Failed to train ALS model", e);

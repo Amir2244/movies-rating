@@ -75,6 +75,7 @@ public class DataSplittingFilter implements Filter<ALSTrainingPipelineContext, A
         context.setTestData(testData);
 
         log.info("Data splitting completed successfully");
+        context.markDataSplittingCompleted();
         return context;
     }
 }
