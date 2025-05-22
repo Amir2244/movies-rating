@@ -23,6 +23,9 @@ public class ALSTrainingPipelineContext {
 
     // Pipeline data
     private Dataset<Row> rawRatings;
+    private Dataset<Row> rawMovies;
+    private Dataset<Row> rawTags;
+    private Dataset<Row> rawLinks;
     private Dataset<ProcessedRating> processedRatings;
     private Dataset<Row> ratingsDf;
     private Dataset<Row> trainingData;
@@ -165,6 +168,30 @@ public class ALSTrainingPipelineContext {
 
     public void setRawRatings(Dataset<Row> rawRatings) {
         this.rawRatings = rawRatings;
+    }
+
+    public Dataset<Row> getRawMovies() {
+        return rawMovies;
+    }
+
+    public void setRawMovies(Dataset<Row> rawMovies) {
+        this.rawMovies = rawMovies;
+    }
+
+    public Dataset<Row> getRawTags() {
+        return rawTags;
+    }
+
+    public void setRawTags(Dataset<Row> rawTags) {
+        this.rawTags = rawTags;
+    }
+
+    public Dataset<Row> getRawLinks() {
+        return rawLinks;
+    }
+
+    public void setRawLinks(Dataset<Row> rawLinks) {
+        this.rawLinks = rawLinks;
     }
 
     public Dataset<ProcessedRating> getProcessedRatings() {
