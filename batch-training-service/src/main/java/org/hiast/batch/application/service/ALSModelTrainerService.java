@@ -60,8 +60,8 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
 
             // Add filters to the pipeline
             pipeline.addFilter(new DataLoadingFilter(ratingDataProvider))
+                    .addFilter(new MovieDataLoadingFilter(ratingDataProvider))
                    .addFilter(new DataPreprocessingFilter(ratingDataProvider))
-                   // Add the data analytics filter after preprocessing
                    .addFilter(new DataAnalyticsFilter(analyticsPersistence))
                    .addFilter(new DataSplittingFilter(alsConfig))
                    .addFilter(new ModelTrainingFilter(alsConfig))
