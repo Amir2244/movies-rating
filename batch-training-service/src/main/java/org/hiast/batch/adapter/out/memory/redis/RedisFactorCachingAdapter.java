@@ -14,6 +14,8 @@ import org.hiast.model.factors.UserFactor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.exceptions.JedisException;
 
@@ -21,22 +23,47 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import scala.collection.Iterator;
 import scala.collection.Seq;
 
-public class RedisFactorCachingAdapter implements FactorCachingPort {
-
+public class RedisFactorCachingAdapter implements FactorCachingPort, AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(RedisFactorCachingAdapter.class);
-
+    private static final int BATCH_SIZE = 5000;
+    private static final int MAX_TOTAL = 100;
+    private static final int MAX_IDLE = 20;
+    private static final int MIN_IDLE = 5;
+    private static final int MAX_WAIT_MILLIS = 30000;
+    private static final boolean TEST_ON_BORROW = true;
+    private static final boolean TEST_ON_RETURN = true;
+    private static final int CONNECTION_TIMEOUT = 2000;
+    private static final int SO_TIMEOUT = 2000;
 
     private final String redisHost;
     private final int redisPort;
+    private final JedisPool jedisPool;
+    private final ObjectMapper objectMapper;
 
-
-    public RedisFactorCachingAdapter(String redisHost, int redisPort /*, String redisPassword */) {
+    public RedisFactorCachingAdapter(String redisHost, int redisPort) {
         this.redisHost = redisHost;
         this.redisPort = redisPort;
+        this.jedisPool = createJedisPool();
+        this.objectMapper = new ObjectMapper();
         log.info("RedisFactorCachingAdapter initialized with host: {}, port: {}", redisHost, redisPort);
+    }
+
+    private JedisPool createJedisPool() {
+        JedisPoolConfig poolConfig = new JedisPoolConfig();
+        poolConfig.setMaxTotal(MAX_TOTAL);
+        poolConfig.setMaxIdle(MAX_IDLE);
+        poolConfig.setMinIdle(MIN_IDLE);
+        poolConfig.setMaxWaitMillis(MAX_WAIT_MILLIS);
+        poolConfig.setTestOnBorrow(TEST_ON_BORROW);
+        poolConfig.setTestOnReturn(TEST_ON_RETURN);
+        poolConfig.setTestWhileIdle(true);
+        poolConfig.setTimeBetweenEvictionRunsMillis(30000);
+        poolConfig.setNumTestsPerEvictionRun(3);
+        poolConfig.setMinEvictableIdleTimeMillis(1800000);
+
+        return new JedisPool(poolConfig, redisHost, redisPort, CONNECTION_TIMEOUT);
     }
 
     @Override
@@ -69,8 +96,8 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
         private final String processorIdColumnName;
         private final String processorFeaturesColumnName;
 
-        public RedisPartitionProcessor(String redisHost, int redisPort, /* String redisPassword, */
-                                       String redisKeyPrefix, String idColumnName, String featuresColumnName) {
+        public RedisPartitionProcessor(String redisHost, int redisPort,
+                                     String redisKeyPrefix, String idColumnName, String featuresColumnName) {
             this.processorRedisHost = redisHost;
             this.processorRedisPort = redisPort;
             this.processorRedisKeyPrefix = redisKeyPrefix;
@@ -79,10 +106,9 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
         }
 
         @Override
-        public void call(java.util.Iterator<Row> partitionIterator)  {
+        public void call(java.util.Iterator<Row> partitionIterator) {
             Jedis jedis = null;
-            Pipeline pipeline;
-            int batchSize = 1000;
+            Pipeline pipeline = null;
             int countInBatch = 0;
             ObjectMapper objectMapper = new ObjectMapper();
 
@@ -107,7 +133,9 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
                             featuresJson = objectMapper.writeValueAsString(((Vector) featuresObject).toArray());
                         } else if (featuresObject instanceof Seq) {
                             List<Object> javaList = new ArrayList<>();
-                            Iterator<?> scalaIterator = ((Seq<?>) featuresObject).iterator();
+                            @SuppressWarnings("unchecked")
+                            scala.collection.Seq<Object> seq = (scala.collection.Seq<Object>) featuresObject;
+                            scala.collection.Iterator<Object> scalaIterator = seq.iterator();
                             while (scalaIterator.hasNext()) {
                                 javaList.add(scalaIterator.next());
                             }
@@ -125,7 +153,7 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
                         pipeline.set(redisKey, featuresJson);
 
                         countInBatch++;
-                        if (countInBatch >= batchSize) {
+                        if (countInBatch >= BATCH_SIZE) {
                             taskLogger.debug("Syncing Redis pipeline for {} (batch size: {})", processorRedisKeyPrefix, countInBatch);
                             pipeline.sync();
                             countInBatch = 0;
@@ -178,7 +206,7 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
         factorsDataset.show(5, false);
 
         RedisPartitionProcessor processor = new RedisPartitionProcessor(
-                redisHost, redisPort, /* password, */ redisKeyPrefix, idColumnName, "features"
+                redisHost, redisPort, redisKeyPrefix, idColumnName, "features"
         );
 
         factorsDataset.foreachPartition(processor);
@@ -198,26 +226,20 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
 
         log.info("Saving {} user factors to Redis...", userFactors.size());
 
-        try (Jedis jedis = new Jedis(redisHost, redisPort)) {
+        try (Jedis jedis = jedisPool.getResource()) {
             Pipeline pipeline = jedis.pipelined();
-            ObjectMapper objectMapper = new ObjectMapper();
-            int batchSize = 1000;
             int count = 0;
 
             for (UserFactor<float[]> userFactor : userFactors) {
                 try {
                     int userId = userFactor.getId().getUserId();
                     float[] features = userFactor.getFeatures();
-
-                    // Convert features to JSON
                     String featuresJson = objectMapper.writeValueAsString(features);
-
-                    // Save to Redis
                     String redisKey = "userFactors:" + userId;
                     pipeline.set(redisKey, featuresJson);
 
                     count++;
-                    if (count % batchSize == 0) {
+                    if (count % BATCH_SIZE == 0) {
                         pipeline.sync();
                         log.debug("Synced Redis pipeline after {} user factors", count);
                     }
@@ -226,7 +248,6 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
                 }
             }
 
-            // Final sync
             pipeline.sync();
             log.info("Successfully saved {} user factors to Redis", count);
         } catch (Exception e) {
@@ -247,26 +268,20 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
 
         log.info("Saving {} item factors to Redis...", itemFactors.size());
 
-        try (Jedis jedis = new Jedis(redisHost, redisPort)) {
+        try (Jedis jedis = jedisPool.getResource()) {
             Pipeline pipeline = jedis.pipelined();
-            ObjectMapper objectMapper = new ObjectMapper();
-            int batchSize = 1000;
             int count = 0;
 
             for (ItemFactor<float[]> itemFactor : itemFactors) {
                 try {
                     int itemId = itemFactor.getId().getMovieId();
                     float[] features = itemFactor.getFeatures();
-
-                    // Convert features to JSON
                     String featuresJson = objectMapper.writeValueAsString(features);
-
-                    // Save to Redis
                     String redisKey = "itemFactors:" + itemId;
                     pipeline.set(redisKey, featuresJson);
 
                     count++;
-                    if (count % batchSize == 0) {
+                    if (count % BATCH_SIZE == 0) {
                         pipeline.sync();
                         log.debug("Synced Redis pipeline after {} item factors", count);
                     }
@@ -275,11 +290,22 @@ public class RedisFactorCachingAdapter implements FactorCachingPort {
                 }
             }
 
-            // Final sync
             pipeline.sync();
             log.info("Successfully saved {} item factors to Redis", count);
         } catch (Exception e) {
             log.error("Error connecting to Redis: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void close() {
+        if (jedisPool != null) {
+            try {
+                jedisPool.close();
+                log.info("Redis connection pool closed");
+            } catch (Exception e) {
+                log.error("Error closing Redis connection pool: {}", e.getMessage(), e);
+            }
         }
     }
 }
