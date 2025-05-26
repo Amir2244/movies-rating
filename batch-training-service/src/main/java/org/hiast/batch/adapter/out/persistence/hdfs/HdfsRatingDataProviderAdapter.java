@@ -35,6 +35,9 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
 
     private static final Logger log = LoggerFactory.getLogger(HdfsRatingDataProviderAdapter.class);
     private final String ratingsInputHdfsPath;
+    private final String moviesInputHdfsPath;
+    private final String tagsInputHdfsPath;
+    private final String linksInputHdfsPath;
 
     private static String bytesToHex(byte[] bytes) {
         if (bytes == null) return "null";
@@ -47,7 +50,31 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
 
     public HdfsRatingDataProviderAdapter(String ratingsInputHdfsPath) {
         this.ratingsInputHdfsPath = ratingsInputHdfsPath;
-        log.info("HdfsRatingDataProviderAdapter initialized with HDFS path: {}", ratingsInputHdfsPath);
+        // Derive other file paths from the ratings path
+        String basePath = ratingsInputHdfsPath.substring(0, ratingsInputHdfsPath.lastIndexOf('/'));
+        this.moviesInputHdfsPath = basePath + "/movies.csv";
+        this.tagsInputHdfsPath = basePath + "/tags.csv";
+        this.linksInputHdfsPath = basePath + "/links.csv";
+
+        log.info("HdfsRatingDataProviderAdapter initialized with paths:");
+        log.info("  Ratings: {}", ratingsInputHdfsPath);
+        log.info("  Movies: {}", moviesInputHdfsPath);
+        log.info("  Tags: {}", tagsInputHdfsPath);
+        log.info("  Links: {}", linksInputHdfsPath);
+    }
+
+    public HdfsRatingDataProviderAdapter(String ratingsInputHdfsPath, String moviesInputHdfsPath,
+                                       String tagsInputHdfsPath, String linksInputHdfsPath) {
+        this.ratingsInputHdfsPath = ratingsInputHdfsPath;
+        this.moviesInputHdfsPath = moviesInputHdfsPath;
+        this.tagsInputHdfsPath = tagsInputHdfsPath;
+        this.linksInputHdfsPath = linksInputHdfsPath;
+
+        log.info("HdfsRatingDataProviderAdapter initialized with explicit paths:");
+        log.info("  Ratings: {}", ratingsInputHdfsPath);
+        log.info("  Movies: {}", moviesInputHdfsPath);
+        log.info("  Tags: {}", tagsInputHdfsPath);
+        log.info("  Links: {}", linksInputHdfsPath);
     }
 
     @Override
@@ -365,5 +392,128 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                 throw (DataLoadingException) e;
             }
         }
+    }
+
+    @Override
+    public Dataset<Row> loadRawMovies(SparkSession spark) {
+        log.info("Attempting to load raw movies from HDFS path: {}", moviesInputHdfsPath);
+        return loadCsvFile(spark, moviesInputHdfsPath, "movies", createMoviesSchema());
+    }
+
+    @Override
+    public Dataset<Row> loadRawTags(SparkSession spark) {
+        log.info("Attempting to load raw tags from HDFS path: {}", tagsInputHdfsPath);
+        return loadCsvFile(spark, tagsInputHdfsPath, "tags", createTagsSchema());
+    }
+
+    @Override
+    public Dataset<Row> loadRawLinks(SparkSession spark) {
+        log.info("Attempting to load raw links from HDFS path: {}", linksInputHdfsPath);
+        return loadCsvFile(spark, linksInputHdfsPath, "links", createLinksSchema());
+    }
+
+    /**
+     * Generic method to load CSV files from HDFS with proper error handling.
+     */
+    private Dataset<Row> loadCsvFile(SparkSession spark, String hdfsPath, String fileType, StructType schema) {
+        try {
+            // Check if file exists
+            boolean fileExists = checkFileExists(spark, hdfsPath);
+            if (!fileExists) {
+                log.warn("{} file does not exist at path: {}. Returning empty dataset.", fileType, hdfsPath);
+                return spark.emptyDataFrame();
+            }
+
+            log.info("Loading {} file as CSV format...", fileType);
+            long startTime = System.nanoTime();
+
+            // Get optimal number of partitions
+            int numCores = Runtime.getRuntime().availableProcessors();
+            int numPartitions = Math.max(2 * numCores, 4);
+
+            Dataset<Row> csvData = spark.read()
+                    .option("header", "true")
+                    .option("encoding", StandardCharsets.UTF_8.name())
+                    .option("mode", "DROPMALFORMED")  // Drop malformed records
+                    .option("nullValue", "")  // Treat empty strings as nulls
+                    .schema(schema)
+                    .csv(hdfsPath)
+                    .repartition(numPartitions);
+
+            // Cache the data for better performance
+            csvData.persist(StorageLevel.MEMORY_AND_DISK());
+
+            long dataCount = csvData.count();
+            long endTime = System.nanoTime();
+
+            log.info("{} data loaded successfully:", fileType);
+            log.info("  Schema:");
+            csvData.printSchema();
+            log.info("  Sample (first 5 rows):");
+            csvData.show(5, false);
+            log.info("  Count: {} rows. Loading took {} ms",
+                    dataCount, TimeUnit.NANOSECONDS.toMillis(endTime - startTime));
+
+            if (dataCount == 0) {
+                log.warn("The {} file {} appears to be empty or only contains a header.", fileType, hdfsPath);
+                csvData.unpersist();
+                return spark.emptyDataFrame();
+            }
+
+            return csvData;
+
+        } catch (Exception e) {
+            log.error("Failed to load {} file from HDFS path: {}. Error: {}. Returning empty dataset.",
+                    fileType, hdfsPath, e.getMessage(), e);
+            return spark.emptyDataFrame();
+        }
+    }
+
+    /**
+     * Check if a file exists in HDFS.
+     */
+    private boolean checkFileExists(SparkSession spark, String hdfsPath) {
+        try {
+            return spark.sparkContext().hadoopConfiguration().get("fs.defaultFS") != null &&
+                    new org.apache.hadoop.fs.Path(hdfsPath).getFileSystem(spark.sparkContext().hadoopConfiguration())
+                            .exists(new org.apache.hadoop.fs.Path(hdfsPath));
+        } catch (Exception e) {
+            log.warn("Error checking if file exists at {}: {}", hdfsPath, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Create schema for movies.csv file.
+     * Expected columns: movieId,title,genres
+     */
+    private StructType createMoviesSchema() {
+        return new StructType()
+                .add("movieId", DataTypes.StringType, true)
+                .add("title", DataTypes.StringType, true)
+                .add("genres", DataTypes.StringType, true);
+    }
+
+    /**
+     * Create schema for tags.csv file.
+     * Expected columns: userId,movieId,tag,timestamp
+     */
+    private StructType createTagsSchema() {
+        return new StructType()
+                .add("userId", DataTypes.StringType, true)
+                .add("movieId", DataTypes.StringType, true)
+                .add("tag", DataTypes.StringType, true)
+                .add("timestamp", DataTypes.StringType, true);
+    }
+
+    /**
+     * Create schema for links.csv file.
+     * Expected columns: movieId,imdbId,tmdbId
+     */
+    private StructType createLinksSchema() {
+        return new StructType()
+                .add("movieId", DataTypes.StringType, true)
+                .add("imdbId", DataTypes.StringType, true)
+                .add("tmdbId", DataTypes.StringType, true);
     }
 }
