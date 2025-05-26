@@ -127,37 +127,38 @@ public class AnalyticsOrchestrator {
         
         try {
             log.info("Executing analytics collector: {}", collectorType);
-            
+
             // Check if collector can process the data
             if (!collector.canProcess(ratingsDf, moviesData, tagsData)) {
                 log.warn("Collector {} cannot process the available data, skipping", collectorType);
                 resultBuilder.addSkipped(collectorType, "Insufficient data for processing");
                 return;
             }
-            
+
             // Collect analytics
-            DataAnalytics analytics = collector.collectAnalytics(ratingsDf, moviesData, tagsData, context);
-            
-            // Persist analytics
-            boolean saved = persistAnalytics(analytics);
-            
-            if (saved) {
-                log.info("✓ {} analytics completed and saved successfully with ID: {}", 
-                        collectorType, analytics.getAnalyticsId());
-                resultBuilder.addSuccess(collectorType, analytics.getAnalyticsId());
-            } else {
-                log.error("✗ Failed to save {} analytics with ID: {}", collectorType, analytics.getAnalyticsId());
-                resultBuilder.addFailure(collectorType, "Failed to persist analytics", null);
-            }
-            
+            List<DataAnalytics> analytics = collector.collectAnalytics(ratingsDf, moviesData, tagsData, context);
+
+           for( DataAnalytics analytic : analytics ) {
+               boolean saved = persistAnalytics(analytic);
+
+               if (saved) {
+                   log.info("✓ {} analytics completed and saved successfully with ID: {}",
+                           collectorType, analytic.getAnalyticsId());
+                   resultBuilder.addSuccess(collectorType, analytic.getAnalyticsId());
+               } else {
+                   log.error("✗ Failed to save {} analytics with ID: {}", collectorType, analytic.getAnalyticsId());
+                   resultBuilder.addFailure(collectorType, "Failed to persist analytics", null);
+               }
+           }
         } catch (AnalyticsCollectionException e) {
             log.error("✗ Analytics collection failed for {}: {}", collectorType, e.getMessage());
             resultBuilder.addFailure(collectorType, e.getMessage(), e);
-            
+
         } catch (Exception e) {
             log.error("✗ Unexpected error in {} analytics: {}", collectorType, e.getMessage(), e);
             resultBuilder.addFailure(collectorType, "Unexpected error: " + e.getMessage(), e);
         }
+
     }
     
     /**

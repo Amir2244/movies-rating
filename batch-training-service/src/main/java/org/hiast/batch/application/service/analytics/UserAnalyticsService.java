@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -27,10 +29,10 @@ public class UserAnalyticsService implements AnalyticsCollector {
     private static final Logger log = LoggerFactory.getLogger(UserAnalyticsService.class);
     
     @Override
-    public DataAnalytics collectAnalytics(Dataset<Row> ratingsDf, 
-                                        Dataset<Row> moviesData, 
-                                        Dataset<Row> tagsData, 
-                                        ALSTrainingPipelineContext context) {
+    public List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
+                                 Dataset<Row> moviesData,
+                                 Dataset<Row> tagsData,
+                                 ALSTrainingPipelineContext context) {
         
         if (!canProcess(ratingsDf, moviesData, tagsData)) {
             throw new AnalyticsCollectionException("USER_ACTIVITY", "Insufficient data for user analytics");
@@ -52,13 +54,13 @@ public class UserAnalyticsService implements AnalyticsCollector {
             
             log.info("User analytics collection completed with {} metrics", metrics.size());
             
-            return new DataAnalytics(
+            return Collections.singletonList(new DataAnalytics(
                     "user_activity_" + UUID.randomUUID().toString().substring(0, 8),
                     Instant.now(),
                     AnalyticsType.USER_ACTIVITY,
                     metrics.build(),
                     "Comprehensive user activity, engagement, and segmentation analytics"
-            );
+            ));
             
         } catch (Exception e) {
             log.error("Error collecting user analytics: {}", e.getMessage(), e);

@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -29,10 +31,10 @@ public class RatingDistributionAnalyticsService implements AnalyticsCollector {
     private static final Logger log = LoggerFactory.getLogger(RatingDistributionAnalyticsService.class);
 
     @Override
-    public DataAnalytics collectAnalytics(Dataset<Row> ratingsDf,
-                                        Dataset<Row> moviesData,
-                                        Dataset<Row> tagsData,
-                                        ALSTrainingPipelineContext context) {
+    public List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
+                                 Dataset<Row> moviesData,
+                                 Dataset<Row> tagsData,
+                                 ALSTrainingPipelineContext context) {
 
         if (!canProcess(ratingsDf, moviesData, tagsData)) {
             throw new AnalyticsCollectionException("RATING_DISTRIBUTION", "Insufficient data for rating distribution analytics");
@@ -54,13 +56,13 @@ public class RatingDistributionAnalyticsService implements AnalyticsCollector {
 
             log.info("Rating distribution analytics collection completed with {} metrics", metrics.size());
 
-            return new DataAnalytics(
+            return Collections.singletonList(new DataAnalytics(
                     "rating_distribution_" + UUID.randomUUID().toString().substring(0, 8),
                     Instant.now(),
                     AnalyticsType.RATING_DISTRIBUTION,
                     metrics.build(),
                     "Rating distribution analytics showing rating patterns and user preferences"
-            );
+            ));
 
         } catch (Exception e) {
             log.error("Error collecting rating distribution analytics: {}", e.getMessage(), e);

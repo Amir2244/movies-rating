@@ -9,26 +9,26 @@ import java.util.Map;
  * while ensuring type safety and validation.
  */
 public class AnalyticsMetrics {
-    
+
     private final Map<String, Object> metrics;
-    
+
     private AnalyticsMetrics() {
         this.metrics = new HashMap<>();
     }
-    
+
     /**
      * Creates a new AnalyticsMetrics builder.
-     * 
+     *
      * @return A new builder instance
      */
     public static AnalyticsMetrics builder() {
         return new AnalyticsMetrics();
     }
-    
+
     /**
      * Adds a string metric.
-     * 
-     * @param key The metric key
+     *
+     * @param key   The metric key
      * @param value The metric value
      * @return This builder for method chaining
      */
@@ -37,11 +37,11 @@ public class AnalyticsMetrics {
         metrics.put(key, value);
         return this;
     }
-    
+
     /**
      * Adds a numeric metric.
-     * 
-     * @param key The metric key
+     *
+     * @param key   The metric key
      * @param value The metric value
      * @return This builder for method chaining
      */
@@ -50,11 +50,11 @@ public class AnalyticsMetrics {
         metrics.put(key, value);
         return this;
     }
-    
+
     /**
      * Adds a boolean metric.
-     * 
-     * @param key The metric key
+     *
+     * @param key   The metric key
      * @param value The metric value
      * @return This builder for method chaining
      */
@@ -63,10 +63,10 @@ public class AnalyticsMetrics {
         metrics.put(key, value);
         return this;
     }
-    
+
     /**
      * Adds multiple metrics from a map.
-     * 
+     *
      * @param metricsMap The metrics to add
      * @return This builder for method chaining
      */
@@ -79,13 +79,13 @@ public class AnalyticsMetrics {
         }
         return this;
     }
-    
+
     /**
      * Adds a metric conditionally.
-     * 
+     *
      * @param condition The condition to check
-     * @param key The metric key
-     * @param value The metric value
+     * @param key       The metric key
+     * @param value     The metric value
      * @return This builder for method chaining
      */
     public AnalyticsMetrics addMetricIf(boolean condition, String key, Object value) {
@@ -95,12 +95,12 @@ public class AnalyticsMetrics {
         }
         return this;
     }
-    
+
     /**
      * Adds a metric with a default value if the provided value is null.
-     * 
-     * @param key The metric key
-     * @param value The metric value
+     *
+     * @param key          The metric key
+     * @param value        The metric value
      * @param defaultValue The default value to use if value is null
      * @return This builder for method chaining
      */
@@ -109,37 +109,41 @@ public class AnalyticsMetrics {
         metrics.put(key, value != null ? value : defaultValue);
         return this;
     }
-    
+
+    public void clearMetrics() {
+        metrics.clear();
+    }
+
     /**
      * Builds and returns the metrics map.
-     * 
+     *
      * @return An immutable copy of the metrics map
      */
     public Map<String, Object> build() {
         return new HashMap<>(metrics);
     }
-    
+
     /**
      * Returns the current size of the metrics map.
-     * 
+     *
      * @return The number of metrics
      */
     public int size() {
         return metrics.size();
     }
-    
+
     /**
      * Checks if the metrics map is empty.
-     * 
+     *
      * @return true if empty, false otherwise
      */
     public boolean isEmpty() {
         return metrics.isEmpty();
     }
-    
+
     /**
      * Validates that the metric key is not null or empty.
-     * 
+     *
      * @param key The key to validate
      * @throws IllegalArgumentException if the key is invalid
      */

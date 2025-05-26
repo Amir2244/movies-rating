@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,10 +30,10 @@ public class TagAnalyticsService implements AnalyticsCollector {
     private static final Logger log = LoggerFactory.getLogger(TagAnalyticsService.class);
     
     @Override
-    public DataAnalytics collectAnalytics(Dataset<Row> ratingsDf, 
-                                        Dataset<Row> moviesData, 
-                                        Dataset<Row> tagsData, 
-                                        ALSTrainingPipelineContext context) {
+    public List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
+                                                Dataset<Row> moviesData,
+                                                Dataset<Row> tagsData,
+                                                ALSTrainingPipelineContext context) {
         
         if (!canProcess(ratingsDf, moviesData, tagsData)) {
             throw new AnalyticsCollectionException("TAG_ANALYTICS", "Insufficient data for tag analytics");
@@ -60,13 +62,13 @@ public class TagAnalyticsService implements AnalyticsCollector {
             
             log.info("User perspective tag analytics collection completed with {} metrics", metrics.size());
             
-            return new DataAnalytics(
+            return Collections.singletonList(new DataAnalytics(
                     "user_perspective_tags_" + UUID.randomUUID().toString().substring(0, 8),
                     Instant.now(),
                     AnalyticsType.USER_ENGAGEMENT, // Using existing type as in original
                     metrics.build(),
                     "User perspective analytics through tags showing how users perceive and describe movies"
-            );
+            ));
             
         } catch (Exception e) {
             log.error("Error collecting user perspective tag analytics: {}", e.getMessage(), e);

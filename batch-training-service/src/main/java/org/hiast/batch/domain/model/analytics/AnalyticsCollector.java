@@ -5,6 +5,9 @@ import org.apache.spark.sql.Row;
 import org.hiast.batch.domain.model.DataAnalytics;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
+
+import java.util.List;
+
 /**
  * Interface for analytics collectors following the Strategy pattern.
  * Each implementation handles a specific type of analytics collection.
@@ -24,10 +27,10 @@ public interface AnalyticsCollector {
      * @return DataAnalytics object containing the collected metrics
      * @throws AnalyticsCollectionException if analytics collection fails
      */
-    DataAnalytics collectAnalytics(Dataset<Row> ratingsDf, 
-                                 Dataset<Row> moviesData, 
-                                 Dataset<Row> tagsData, 
-                                 ALSTrainingPipelineContext context);
+    List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
+                                         Dataset<Row> moviesData,
+                                         Dataset<Row> tagsData,
+                                         ALSTrainingPipelineContext context);
     
     /**
      * Returns the analytics type this collector handles.

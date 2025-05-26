@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,10 +30,10 @@ public class TemporalTrendsAnalyticsService implements AnalyticsCollector {
     private static final Logger log = LoggerFactory.getLogger(TemporalTrendsAnalyticsService.class);
     
     @Override
-    public DataAnalytics collectAnalytics(Dataset<Row> ratingsDf, 
-                                        Dataset<Row> moviesData, 
-                                        Dataset<Row> tagsData, 
-                                        ALSTrainingPipelineContext context) {
+    public List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
+                                                Dataset<Row> moviesData,
+                                                Dataset<Row> tagsData,
+                                                ALSTrainingPipelineContext context) {
         
         if (!canProcess(ratingsDf, moviesData, tagsData)) {
             throw new AnalyticsCollectionException("TEMPORAL_TRENDS", "Insufficient data for temporal trends analytics");
@@ -58,13 +60,13 @@ public class TemporalTrendsAnalyticsService implements AnalyticsCollector {
             
             log.info("Temporal trends analytics collection completed with {} metrics", metrics.size());
             
-            return new DataAnalytics(
+            return Collections.singletonList(new DataAnalytics(
                     "temporal_trends_" + UUID.randomUUID().toString().substring(0, 8),
                     Instant.now(),
                     AnalyticsType.TEMPORAL_TRENDS,
                     metrics.build(),
                     "Temporal trends and seasonal pattern analytics"
-            );
+            ));
             
         } catch (Exception e) {
             log.error("Error collecting temporal trends analytics: {}", e.getMessage(), e);
