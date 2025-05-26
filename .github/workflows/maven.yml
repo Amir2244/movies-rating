@@ -28,7 +28,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
       - name: Build shared-kernel
-        run: mvn -B clean package --file shared-kernel/pom.xml
+        run: mvn -B clean install --file shared-kernel/pom.xml
       - name: Build batch-training-service
         run: mvn -B clean package --file batch-training-service/pom.xml
 
