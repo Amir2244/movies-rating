@@ -1,11 +1,10 @@
-package org.hiast.batch.adapter.out.memory.redis.util;
+package org.hiast.batch.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 
 /**
  * Utility class for serializing and deserializing float vectors to/from byte arrays

@@ -1,4 +1,4 @@
-package org.hiast.batch.adapter.out.memory.redis.util;
+package org.hiast.batch.util;
 
 /**
  * Exception thrown when vector serialization or deserialization operations fail.

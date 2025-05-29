@@ -1,4 +1,4 @@
-package org.hiast.batch.adapter.out.memory.redis.util;
+package org.hiast.batch.util;
 
 import java.time.Instant;
 import java.util.Objects;

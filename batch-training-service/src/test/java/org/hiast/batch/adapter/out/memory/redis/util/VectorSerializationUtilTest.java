@@ -1,5 +1,7 @@
 package org.hiast.batch.adapter.out.memory.redis.util;
 
+import org.hiast.batch.util.VectorSerializationException;
+import org.hiast.batch.util.VectorSerializationUtil;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
