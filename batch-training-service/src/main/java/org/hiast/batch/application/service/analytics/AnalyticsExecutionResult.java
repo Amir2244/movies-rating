@@ -1,4 +1,4 @@
-package org.hiast.batch.util.analytics;
+package org.hiast.batch.application.service.analytics;
 
 import java.util.ArrayList;
 import java.util.Collections;

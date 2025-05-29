@@ -1,4 +1,4 @@
-package org.hiast.batch.util.analytics;
+package org.hiast.batch.application.service.analytics;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
