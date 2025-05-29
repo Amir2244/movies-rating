@@ -28,14 +28,14 @@ services:
       - app-network
 
   spark-master:
-    image: bde2020/spark-master:3.3.0-hadoop3.3
+    image: apache/spark:3.5.0-hadoop3
     container_name: spark-master
     environment:
-      - ENABLE_INIT_DAEMON=false
-      - SPARK_MODE=master
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
     ports:
       - "8080:8080"
+      - "7077:7077"
+    mem_limit: 4g
     volumes:
       - ./batch-training-service/target/batch-training-service.jar:/opt/spark-apps/batch-training-service.jar
       - ./docker-volumes/spark_master_app_logs:/opt/spark-apps/logs
@@ -47,13 +47,13 @@ services:
       - app-network
 
   spark-worker:
-    image: bde2020/spark-worker:3.3.0-hadoop3.3
+    image: apache/spark:3.5.0-hadoop3
     container_name: spark-worker
     environment:
-      - ENABLE_INIT_DAEMON=false
-      - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    mem_limit: 8g
     volumes:
       - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
@@ -64,17 +64,16 @@ services:
     networks:
       - app-network
   spark-worker-2:
-    image: bde2020/spark-worker:3.3.0-hadoop3.3
+    image: apache/spark:3.5.0-hadoop3
     container_name: spark-worker-2
     environment:
-      - ENABLE_INIT_DAEMON=false
-      - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    mem_limit: 8g
     volumes:
       - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
-
     depends_on:
       - spark-master
       - datanode
