@@ -1,7 +1,7 @@
 package org.hiast.batch.application.service.factory;
 
-import org.hiast.batch.application.service.analytics.*;
-import org.hiast.batch.domain.model.analytics.AnalyticsCollector;
+import org.hiast.batch.util.analytics.*;
+import org.hiast.batch.util.analytics.AnalyticsCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

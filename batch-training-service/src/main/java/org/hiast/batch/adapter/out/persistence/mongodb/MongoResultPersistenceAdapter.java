@@ -135,6 +135,15 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
                     .append("movieId", rec.getMovieId())
                     .append("rating", rec.getRating())
                     .append("generatedAt", Date.from(rec.getGeneratedAt()));
+
+            // Add movie metadata if available
+            if (rec.getMovieTitle() != null) {
+                recDoc.append("movieTitle", rec.getMovieTitle());
+            }
+            if (rec.getMovieGenres() != null && !rec.getMovieGenres().isEmpty()) {
+                recDoc.append("movieGenres", rec.getMovieGenres());
+            }
+
             recommendationDocs.add(recDoc);
         }
 

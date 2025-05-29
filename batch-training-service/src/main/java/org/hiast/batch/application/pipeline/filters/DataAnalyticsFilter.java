@@ -3,8 +3,8 @@ package org.hiast.batch.application.pipeline.filters;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.pipeline.Filter;
 import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
-import org.hiast.batch.application.service.analytics.AnalyticsExecutionResult;
-import org.hiast.batch.application.service.analytics.AnalyticsOrchestrator;
+import org.hiast.batch.util.analytics.AnalyticsExecutionResult;
+import org.hiast.batch.util.analytics.AnalyticsOrchestrator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

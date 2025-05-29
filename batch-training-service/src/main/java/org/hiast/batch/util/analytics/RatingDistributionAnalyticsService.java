@@ -1,4 +1,4 @@
-package org.hiast.batch.application.service.analytics;
+package org.hiast.batch.util.analytics;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -7,7 +7,6 @@ import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 import org.hiast.batch.domain.model.AnalyticsType;
 import org.hiast.batch.domain.model.DataAnalytics;
-import org.hiast.batch.domain.model.analytics.AnalyticsCollector;
 import org.hiast.batch.domain.model.analytics.AnalyticsMetrics;
 
 import org.slf4j.Logger;

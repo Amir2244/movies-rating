@@ -1,4 +1,4 @@
-package org.hiast.batch.application.service.analytics;
+package org.hiast.batch.util.analytics;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -7,7 +7,6 @@ import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 import org.hiast.batch.domain.model.DataAnalytics;
 import org.hiast.batch.application.service.factory.AnalyticsCollectorFactory;
-import org.hiast.batch.domain.model.analytics.AnalyticsCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

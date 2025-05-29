@@ -68,7 +68,7 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
                    .addFilter(new ModelEvaluationFilter())
                    .addFilter(new FactorPersistenceFilter(factorPersistence))
                    .addFilter(new ModelSavingFilter(hdfsConfig))
-                   .addFilter(new ResultSavingFilter(resultPersistence));
+                   .addFilter(new MovieMetaDataEnrichmentFilter(resultPersistence));
 
             // Execute the pipeline
             ALSTrainingPipelineContext result = pipeline.execute(context);
