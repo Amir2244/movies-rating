@@ -3,7 +3,8 @@ package org.hiast.batch.application.service.analytics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.functions;
-import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
+import org.apache.spark.storage.StorageLevel;
+// import org.hiast.batch.application.pipeline.BasePipelineContext; // Not used
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 import org.hiast.batch.domain.model.AnalyticsType;
 import org.hiast.batch.domain.model.DataAnalytics;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.ArrayList; // Import ArrayList
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -22,39 +24,78 @@ import java.util.UUID;
  * based on activity levels and rating patterns.
  * <p>
  * This service generates a separate analytics document focused specifically
- * on user segmentation metrics, exactly as in the original implementation.
+ * on user segmentation metrics.
+ * OPTIMIZED VERSION v2: Further reduces Spark actions by combining counts.
  */
 public class UserSegmentationAnalyticsService implements AnalyticsCollector {
 
     private static final Logger log = LoggerFactory.getLogger(UserSegmentationAnalyticsService.class);
 
+    // Helper method for robustly getting a double value from a Row
+    private double getDoubleFromRow(Row row, String fieldName, double defaultValue) {
+        try {
+            int fieldIndex = row.fieldIndex(fieldName);
+            if (row.isNullAt(fieldIndex)) {
+                return defaultValue;
+            }
+            Object value = row.get(fieldIndex);
+            if (value instanceof Number) {
+                return ((Number) value).doubleValue();
+            }
+            return Double.parseDouble(value.toString());
+        } catch (Exception e) {
+            log.warn("Failed to get double for field '{}' from row. Value: '{}'. Error: {}. Returning default: {}",
+                    fieldName, row.getAs(fieldName), e.getMessage(), defaultValue);
+            return defaultValue;
+        }
+    }
+
+    // Helper method for robustly getting a long value from a Row
+    private long getLongFromRow(Row row, String fieldName, long defaultValue) {
+        try {
+            int fieldIndex = row.fieldIndex(fieldName);
+            if (row.isNullAt(fieldIndex)) {
+                return defaultValue;
+            }
+            Object value = row.get(fieldIndex);
+            if (value instanceof Number) {
+                return ((Number) value).longValue();
+            }
+            return Long.parseLong(value.toString());
+        } catch (Exception e) {
+            log.warn("Failed to get long for field '{}' from row. Value: '{}'. Error: {}. Returning default: {}",
+                    fieldName, row.getAs(fieldName), e.getMessage(), defaultValue);
+            return defaultValue;
+        }
+    }
+
+
     @Override
     public List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
                                                 Dataset<Row> moviesData,
-                                                Dataset<Row> tagsData,
-                                                ALSTrainingPipelineContext context) {
+                                                Dataset<Row> tagsData) {
 
         if (!canProcess(ratingsDf, moviesData, tagsData)) {
             throw new AnalyticsCollectionException("USER_SEGMENTATION", "Insufficient data for user segmentation analytics");
         }
+        List<DataAnalytics> collectedAnalytics = new ArrayList<>();
 
         try {
-            log.info("Collecting user segmentation analytics...");
-
+            log.info("Collecting user segmentation analytics (Optimized v2)...");
             AnalyticsMetrics metrics = AnalyticsMetrics.builder();
 
-            // Collect user segmentation metrics - exact same as original
-            collectUserSegmentationMetrics(ratingsDf, metrics);
+            collectUserSegmentationMetricsInternal(ratingsDf, metrics);
 
             log.info("User segmentation analytics collection completed with {} metrics", metrics.size());
 
-            return Collections.singletonList(new DataAnalytics(
+            collectedAnalytics.add(new DataAnalytics(
                     "user_segmentation_" + UUID.randomUUID().toString().substring(0, 8),
                     Instant.now(),
                     AnalyticsType.USER_SEGMENTATION,
                     metrics.build(),
                     "User segmentation and behavior pattern analytics"
             ));
+            return collectedAnalytics;
 
         } catch (Exception e) {
             log.error("Error collecting user segmentation analytics: {}", e.getMessage(), e);
@@ -63,134 +104,164 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
     }
 
     /**
-     * Collects user segmentation metrics - exact same as original implementation.
+     * Internal method to collect user segmentation metrics.
      */
-    private void collectUserSegmentationMetrics(Dataset<Row> ratingsDf, AnalyticsMetrics metrics) {
-        log.info("Collecting user segmentation analytics...");
+    private void collectUserSegmentationMetricsInternal(Dataset<Row> ratingsDf, AnalyticsMetrics metrics) {
+        log.debug("Executing internal user segmentation metrics collection (Optimized v2)...");
 
-        try {
-            // Calculate user behavior metrics for segmentation - exact same as original
-            Dataset<Row> userBehavior = ratingsDf.groupBy("userId")
-                    .agg(
-                            functions.count("ratingActual").as("totalRatings"),
-                            functions.avg("ratingActual").as("avgRating"),
-                            functions.stddev("ratingActual").as("ratingStdDev"),
-                            functions.countDistinct("movieId").as("uniqueMovies")
-                    );
+        Dataset<Row> relevantRatings = ratingsDf.select(
+                functions.col("userId"),
+                functions.col("movieId"),
+                functions.col("ratingActual")
+        );
 
-            // Define user segments based on activity and rating patterns - exact same as original
-            Dataset<Row> userSegments = userBehavior
-                    .withColumn("activityLevel",
-                            functions.when(functions.col("totalRatings").gt(100), "High")
-                                    .when(functions.col("totalRatings").gt(20), "Medium")
-                                    .otherwise("Low"))
-                    .withColumn("ratingPattern",
-                            functions.when(functions.col("avgRating").gt(4.0), "Positive")
-                                    .when(functions.col("avgRating").gt(2.5), "Neutral")
-                                    .otherwise("Critical"));
+        Dataset<Row> userBehavior = relevantRatings.groupBy("userId")
+                .agg(
+                        functions.count("ratingActual").as("totalRatings"),
+                        functions.avg("ratingActual").as("avgRating"),
+                        functions.stddev_samp("ratingActual").as("ratingStdDev"),
+                        functions.countDistinct("movieId").as("uniqueMovies")
+                );
 
-            // Count users in each segment - exact same as original
-            Dataset<Row> segmentCounts = userSegments
-                    .groupBy("activityLevel", "ratingPattern")
-                    .count()
-                    .orderBy("activityLevel", "ratingPattern");
+        userBehavior.persist(StorageLevel.MEMORY_AND_DISK_SER());
+        long totalUsers = userBehavior.count(); // Action: Get total unique users
+        log.debug("Persisted userBehavior dataset. Total unique users: {}", totalUsers);
+        metrics.addMetric("totalUsers", totalUsers);
 
-            // Add segment counts - exact same as original
-            segmentCounts.collectAsList().forEach(row -> {
-                String activityLevel = row.getString(0);
-                String ratingPattern = row.getString(1);
-                long count = row.getLong(2);
-                String segmentKey = "segment_" + activityLevel + "_" + ratingPattern;
-                metrics.addMetric(segmentKey, count);
-            });
-
-            // Calculate overall segment statistics - exact same as original
-            long totalUsers = userBehavior.count();
-            long highActivityUsers = userSegments.filter(functions.col("activityLevel").equalTo("High")).count();
-            long mediumActivityUsers = userSegments.filter(functions.col("activityLevel").equalTo("Medium")).count();
-            long lowActivityUsers = userSegments.filter(functions.col("activityLevel").equalTo("Low")).count();
-
-            metrics.addMetric("totalUsers", totalUsers)
-                    .addMetric("highActivityUsers", highActivityUsers)
-                    .addMetric("mediumActivityUsers", mediumActivityUsers)
-                    .addMetric("lowActivityUsers", lowActivityUsers)
-                    .addMetric("highActivityPercentage", (double) highActivityUsers / totalUsers * 100)
-                    .addMetric("mediumActivityPercentage", (double) mediumActivityUsers / totalUsers * 100)
-                    .addMetric("lowActivityPercentage", (double) lowActivityUsers / totalUsers * 100);
-
-            // Calculate rating pattern distribution - exact same as original
-            long positiveUsers = userSegments.filter(functions.col("ratingPattern").equalTo("Positive")).count();
-            long neutralUsers = userSegments.filter(functions.col("ratingPattern").equalTo("Neutral")).count();
-            long criticalUsers = userSegments.filter(functions.col("ratingPattern").equalTo("Critical")).count();
-
-            metrics.addMetric("positiveUsers", positiveUsers)
-                    .addMetric("neutralUsers", neutralUsers)
-                    .addMetric("criticalUsers", criticalUsers)
-                    .addMetric("positiveUsersPercentage", (double) positiveUsers / totalUsers * 100)
-                    .addMetric("neutralUsersPercentage", (double) neutralUsers / totalUsers * 100)
-                    .addMetric("criticalUsersPercentage", (double) criticalUsers / totalUsers * 100);
-
-            // Advanced segmentation analysis - exact same as original
-            Dataset<Row> advancedSegments = userBehavior
-                    .withColumn("engagementLevel",
-                            functions.when(functions.col("uniqueMovies").gt(functions.col("totalRatings").multiply(0.8)), "Explorer")
-                                    .when(functions.col("uniqueMovies").gt(functions.col("totalRatings").multiply(0.5)), "Selective")
-                                    .otherwise("Focused"))
-                    .withColumn("ratingConsistency",
-                            functions.when(functions.col("ratingStdDev").lt(0.5), "Consistent")
-                                    .when(functions.col("ratingStdDev").lt(1.0), "Moderate")
-                                    .otherwise("Variable"));
-
-            // Count advanced segments - exact same as original
-            Dataset<Row> advancedSegmentCounts = advancedSegments
-                    .groupBy("engagementLevel", "ratingConsistency")
-                    .count()
-                    .orderBy("engagementLevel", "ratingConsistency");
-
-            // Add advanced segment counts - exact same as original
-            advancedSegmentCounts.collectAsList().forEach(row -> {
-                String engagementLevel = row.getString(0);
-                String ratingConsistency = row.getString(1);
-                long count = row.getLong(2);
-                String segmentKey = "advancedSegment_" + engagementLevel + "_" + ratingConsistency;
-                metrics.addMetric(segmentKey, count);
-            });
-
-            // Calculate segment quality metrics - exact same as original
-            Row segmentQuality = userBehavior.agg(
-                    functions.avg("totalRatings").as("avgRatingsAcrossUsers"),
-                    functions.avg("avgRating").as("avgRatingAcrossUsers"),
-                    functions.avg("uniqueMovies").as("avgUniqueMoviesAcrossUsers"),
-                    functions.stddev("totalRatings").as("activityVariation"),
-                    functions.stddev("avgRating").as("ratingVariation")
-            ).first();
-
-            metrics.addMetric("avgRatingsAcrossUsers", segmentQuality.getDouble(0))
-                    .addMetric("avgRatingAcrossUsers", segmentQuality.getDouble(1))
-                    .addMetric("avgUniqueMoviesAcrossUsers", segmentQuality.getDouble(2))
-                    .addMetricWithDefault("activityVariation", segmentQuality.get(3), 0.0)
-                    .addMetricWithDefault("ratingVariation", segmentQuality.get(4), 0.0);
-
-            // Calculate segmentation effectiveness score - exact same as original
-            double segmentationScore = 100.0;
-
-            // Penalize if segments are too unbalanced
-            double maxSegmentPercentage = Math.max(Math.max(
-                            (double) highActivityUsers / totalUsers,
-                            (double) mediumActivityUsers / totalUsers),
-                    (double) lowActivityUsers / totalUsers) * 100;
-
-            if (maxSegmentPercentage > 80) segmentationScore -= 30;
-            else if (maxSegmentPercentage > 70) segmentationScore -= 20;
-            else if (maxSegmentPercentage > 60) segmentationScore -= 10;
-
-            metrics.addMetric("segmentationEffectivenessScore", segmentationScore)
-                    .addMetric("maxSegmentPercentage", maxSegmentPercentage);
-
-        } catch (Exception e) {
-            log.error("Error collecting user segmentation analytics: {}", e.getMessage(), e);
-            throw new AnalyticsCollectionException("USER_SEGMENTATION", e.getMessage(), e);
+        if (totalUsers == 0) {
+            log.warn("No user behavior data to segment. Skipping further segmentation metrics.");
+            // Add default/zero values for remaining metrics if necessary
+            metrics.addMetric("highActivityUsers", 0L)
+                    .addMetric("mediumActivityUsers", 0L)
+                    // ... and so on for all metrics that depend on totalUsers > 0
+                    .addMetric("segmentationEffectivenessScore", 0.0);
+            userBehavior.unpersist();
+            return;
         }
+
+        Dataset<Row> userSegments = userBehavior
+                .withColumn("activityLevel",
+                        functions.when(functions.col("totalRatings").gt(100), "High")
+                                .when(functions.col("totalRatings").gt(20), "Medium")
+                                .otherwise("Low"))
+                .withColumn("ratingPattern",
+                        functions.when(functions.col("avgRating").gt(4.0), "Positive")
+                                .when(functions.col("avgRating").gt(2.5), "Neutral")
+                                .otherwise("Critical"));
+
+        // Persist userSegments as it's used for multiple counts and derivations
+        userSegments.persist(StorageLevel.MEMORY_AND_DISK_SER());
+        log.debug("Persisted userSegments dataset. First few rows:");
+        userSegments.show(5, false);
+
+
+        // --- OPTIMIZATION: Combine multiple counts into fewer actions ---
+        Row activityAndPatternCounts = userSegments.agg(
+                functions.sum(functions.when(functions.col("activityLevel").equalTo("High"), 1).otherwise(0)).as("highActivityUsers"),
+                functions.sum(functions.when(functions.col("activityLevel").equalTo("Medium"), 1).otherwise(0)).as("mediumActivityUsers"),
+                functions.sum(functions.when(functions.col("activityLevel").equalTo("Low"), 1).otherwise(0)).as("lowActivityUsers"),
+                functions.sum(functions.when(functions.col("ratingPattern").equalTo("Positive"), 1).otherwise(0)).as("positiveUsers"),
+                functions.sum(functions.when(functions.col("ratingPattern").equalTo("Neutral"), 1).otherwise(0)).as("neutralUsers"),
+                functions.sum(functions.when(functions.col("ratingPattern").equalTo("Critical"), 1).otherwise(0)).as("criticalUsers")
+        ).first();
+
+        long highActivityUsers = 0L, mediumActivityUsers = 0L, lowActivityUsers = 0L;
+        long positiveUsers = 0L, neutralUsers = 0L, criticalUsers = 0L;
+
+        if (activityAndPatternCounts != null) {
+            highActivityUsers = getLongFromRow(activityAndPatternCounts, "highActivityUsers", 0L);
+            mediumActivityUsers = getLongFromRow(activityAndPatternCounts, "mediumActivityUsers", 0L);
+            lowActivityUsers = getLongFromRow(activityAndPatternCounts, "lowActivityUsers", 0L);
+            positiveUsers = getLongFromRow(activityAndPatternCounts, "positiveUsers", 0L);
+            neutralUsers = getLongFromRow(activityAndPatternCounts, "neutralUsers", 0L);
+            criticalUsers = getLongFromRow(activityAndPatternCounts, "criticalUsers", 0L);
+        }
+
+        metrics.addMetric("highActivityUsers", highActivityUsers)
+                .addMetric("mediumActivityUsers", mediumActivityUsers)
+                .addMetric("lowActivityUsers", lowActivityUsers)
+                .addMetric("highActivityPercentage", (double) highActivityUsers / totalUsers * 100.0)
+                .addMetric("mediumActivityPercentage", (double) mediumActivityUsers / totalUsers * 100.0)
+                .addMetric("lowActivityPercentage", (double) lowActivityUsers / totalUsers * 100.0);
+
+        metrics.addMetric("positiveUsers", positiveUsers)
+                .addMetric("neutralUsers", neutralUsers)
+                .addMetric("criticalUsers", criticalUsers)
+                .addMetric("positiveUsersPercentage", (double) positiveUsers / totalUsers * 100.0)
+                .addMetric("neutralUsersPercentage", (double) neutralUsers / totalUsers * 100.0)
+                .addMetric("criticalUsersPercentage", (double) criticalUsers / totalUsers * 100.0);
+
+        // This part is already efficient (groupBy on small cardinality, then collect)
+        Dataset<Row> segmentCounts = userSegments // Reuses persisted userSegments
+                .groupBy("activityLevel", "ratingPattern")
+                .count()
+                .orderBy("activityLevel", "ratingPattern");
+
+        List<Row> collectedSegmentCounts = segmentCounts.collectAsList();
+        for(Row row : collectedSegmentCounts) {
+            String activityLevel = row.getString(row.fieldIndex("activityLevel"));
+            String ratingPattern = row.getString(row.fieldIndex("ratingPattern"));
+            long count = getLongFromRow(row, "count", 0L);
+            String segmentKey = "segment_" + activityLevel + "_" + ratingPattern;
+            metrics.addMetric(segmentKey, count);
+        }
+
+        Dataset<Row> advancedSegments = userBehavior // Reuses persisted userBehavior (from initial persist)
+                .withColumn("engagementLevel",
+                        functions.when(functions.col("uniqueMovies").gt(functions.col("totalRatings").multiply(0.8)), "Explorer")
+                                .when(functions.col("uniqueMovies").gt(functions.col("totalRatings").multiply(0.5)), "Selective")
+                                .otherwise("Focused"))
+                .withColumn("ratingConsistency",
+                        functions.when(functions.col("ratingStdDev").isNotNull().and(functions.col("ratingStdDev").lt(0.5)), "Consistent")
+                                .when(functions.col("ratingStdDev").isNotNull().and(functions.col("ratingStdDev").lt(1.0)), "Moderate")
+                                .otherwise("Variable"));
+
+        Dataset<Row> advancedSegmentCounts = advancedSegments
+                .groupBy("engagementLevel", "ratingConsistency")
+                .count()
+                .orderBy("engagementLevel", "ratingConsistency");
+
+        List<Row> collectedAdvancedSegmentCounts = advancedSegmentCounts.collectAsList();
+        for(Row row : collectedAdvancedSegmentCounts) {
+            String engagementLevel = row.getString(row.fieldIndex("engagementLevel"));
+            String ratingConsistency = row.getString(row.fieldIndex("ratingConsistency"));
+            long count = getLongFromRow(row, "count", 0L);
+            String segmentKey = "advancedSegment_" + engagementLevel + "_" + ratingConsistency;
+            metrics.addMetric(segmentKey, count);
+        }
+
+        Row segmentQuality = userBehavior.agg( // Reuses persisted userBehavior
+                functions.avg("totalRatings").as("avgRatingsAcrossUsers"),
+                functions.avg("avgRating").as("avgRatingAcrossUsers"),
+                functions.avg("uniqueMovies").as("avgUniqueMoviesAcrossUsers"),
+                functions.stddev_samp("totalRatings").as("activityVariation"),
+                functions.stddev_samp("avgRating").as("ratingVariation")
+        ).first();
+
+        if (segmentQuality != null) {
+            metrics.addMetric("avgRatingsAcrossUsers", getDoubleFromRow(segmentQuality, "avgRatingsAcrossUsers", 0.0))
+                    .addMetric("avgRatingAcrossUsers", getDoubleFromRow(segmentQuality, "avgRatingAcrossUsers", 0.0))
+                    .addMetric("avgUniqueMoviesAcrossUsers", getDoubleFromRow(segmentQuality, "avgUniqueMoviesAcrossUsers", 0.0))
+                    .addMetricWithDefault("activityVariation", segmentQuality.get(segmentQuality.fieldIndex("activityVariation")), 0.0)
+                    .addMetricWithDefault("ratingVariation", segmentQuality.get(segmentQuality.fieldIndex("ratingVariation")), 0.0);
+        }
+
+        double segmentationScore = 100.0;
+        // totalUsers, highActivityUsers, etc. are already calculated and available as Java variables
+        double maxSegmentPercentage = Math.max(Math.max(
+                        (double) highActivityUsers / totalUsers,
+                        (double) mediumActivityUsers / totalUsers),
+                (double) lowActivityUsers / totalUsers) * 100.0;
+
+        if (maxSegmentPercentage > 80) segmentationScore -= 30;
+        else if (maxSegmentPercentage > 70) segmentationScore -= 20;
+        else if (maxSegmentPercentage > 60) segmentationScore -= 10;
+        metrics.addMetric("maxSegmentPercentage", maxSegmentPercentage);
+        metrics.addMetric("segmentationEffectivenessScore", segmentationScore);
+
+        userSegments.unpersist(); // Unpersist userSegments
+        userBehavior.unpersist();
+        log.debug("Unpersisted userBehavior and userSegments datasets.");
     }
 
     @Override
@@ -200,11 +271,14 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
 
     @Override
     public boolean canProcess(Dataset<Row> ratingsDf, Dataset<Row> moviesData, Dataset<Row> tagsData) {
-        return ratingsDf != null && !ratingsDf.isEmpty();
+        if (ratingsDf == null || ratingsDf.isEmpty()) return false;
+        List<String> requiredColumns = java.util.Arrays.asList("userId", "movieId", "ratingActual");
+        List<String> actualColumns = java.util.Arrays.asList(ratingsDf.columns());
+        return actualColumns.containsAll(requiredColumns);
     }
 
     @Override
     public int getPriority() {
-        return 35; // Medium priority for user segmentation
+        return 35;
     }
 }

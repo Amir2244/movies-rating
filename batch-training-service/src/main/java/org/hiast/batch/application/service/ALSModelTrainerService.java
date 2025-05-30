@@ -27,7 +27,7 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
     private final RatingDataProviderPort ratingDataProvider;
     private final FactorCachingPort factorPersistence;
     private final ResultPersistencePort resultPersistence;
-    private final AnalyticsPersistencePort analyticsPersistence;
+
     private final ALSConfig alsConfig;
     private final HDFSConfig hdfsConfig;
 
@@ -42,12 +42,12 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
         this.ratingDataProvider = ratingDataProvider;
         this.factorPersistence = factorPersistence;
         this.resultPersistence = resultPersistence;
-        this.analyticsPersistence = analyticsPersistence;
         this.alsConfig = alsConfig;
         this.hdfsConfig = hdfsConfig;
     }
 
     @Override
+    @SuppressWarnings("unchecked") // Suppress warnings due to Pipeline's internal use of raw types for filters
     public void executeTrainingPipeline() {
         log.info("Starting ALS model training pipeline using pipes and filter pattern...");
 
@@ -55,33 +55,40 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
             // Create the pipeline context
             ALSTrainingPipelineContext context = new ALSTrainingPipelineContext(spark);
 
-            // Create the pipeline with all filters
-            Pipeline<ALSTrainingPipelineContext, ALSTrainingPipelineContext> pipeline = new Pipeline<>(ALSTrainingPipelineContext.class);
+            try {
+                // Create the pipeline with all filters
+                Pipeline<ALSTrainingPipelineContext, ALSTrainingPipelineContext> pipeline = new Pipeline<>(ALSTrainingPipelineContext.class);
 
-            // Add filters to the pipeline
-            pipeline.addFilter(new DataLoadingFilter(ratingDataProvider))
-                    .addFilter(new MovieDataLoadingFilter(ratingDataProvider))
-                   .addFilter(new DataPreprocessingFilter(ratingDataProvider))
-                   .addFilter(new DataAnalyticsFilter(analyticsPersistence))
-                   .addFilter(new DataSplittingFilter(alsConfig))
-                   .addFilter(new ModelTrainingFilter(alsConfig))
-                   .addFilter(new ModelEvaluationFilter())
-                   .addFilter(new FactorPersistenceFilter(factorPersistence))
-                   .addFilter(new ModelSavingFilter(hdfsConfig))
-                   .addFilter(new MovieMetaDataEnrichmentFilter(resultPersistence));
+                // Add filters to the pipeline (analytics removed - now runs as separate job)
+                pipeline.addFilter(new DataLoadingFilter<>(ratingDataProvider))
+                        .addFilter(new MovieDataLoadingFilter<>(ratingDataProvider))
+                       .addFilter(new DataPreprocessingFilter<>(ratingDataProvider))
+                       // .addFilter(new DataAnalyticsFilter(analyticsPersistence)) // REMOVED - separate job
+                       .addFilter(new DataSplittingFilter(alsConfig))
+                       .addFilter(new ModelTrainingFilter(alsConfig))
+                       .addFilter(new ModelEvaluationFilter())
+                       .addFilter(new FactorPersistenceFilter(factorPersistence))
+                       .addFilter(new ModelSavingFilter(hdfsConfig))
+                       .addFilter(new MovieMetaDataEnrichmentFilter(resultPersistence));
 
-            // Execute the pipeline
-            ALSTrainingPipelineContext result = pipeline.execute(context);
+                // Execute the pipeline
+                ALSTrainingPipelineContext result = pipeline.execute(context);
 
-            // Check the result
-            if (result.isModelSaved() && result.isFactorsPersisted() && result.isResultsSaved()) {
-                log.info("ALS model training pipeline finished successfully.");
-            } else {
-                log.warn("ALS model training pipeline finished with warnings. Model saved: {}, Factors persisted: {}, Results saved: {}",
-                        result.isModelSaved(), result.isFactorsPersisted(), result.isResultsSaved());
+                // Check the result
+                if (result.isModelSaved() && result.isFactorsPersisted() && result.isResultsSaved()) {
+                    log.info("ALS model training pipeline finished successfully.");
+                } else {
+                    log.warn("ALS model training pipeline finished with warnings. Model saved: {}, Factors persisted: {}, Results saved: {}",
+                            result.isModelSaved(), result.isFactorsPersisted(), result.isResultsSaved());
+                }
+            } finally {
+                log.info("Cleaning up pipeline context data...");
+                context.cleanupRawData();
+                context.cleanupProcessedData();
+                log.info("Pipeline context data cleanup complete.");
             }
         } catch (Exception e) {
-            log.error("Error during model training pipeline: ", e);
+            log.error("Error during model training pipeline: {}", e.getMessage(), e);
             throw e;
         }
     }

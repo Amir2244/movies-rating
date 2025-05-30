@@ -2,6 +2,7 @@ package org.hiast.batch.launcher;
 
 import org.hiast.batch.adapter.driver.http.HealthCheckServer;
 import org.hiast.batch.adapter.driver.spark.BatchTrainingJob;
+import org.hiast.batch.adapter.driver.spark.AnalyticsJob;
 import org.hiast.batch.config.AppConfig;
 import org.hiast.batch.example.ModelPredictionExample;
 import org.slf4j.Logger;
@@ -42,6 +43,11 @@ public class AppLauncher {
                 BatchTrainingJob.main(remainingArgs);
                 break;
 
+            case "analytics":
+                log.info("Launching AnalyticsJob...");
+                AnalyticsJob.main(remainingArgs);
+                break;
+
             case "predict":
                 log.info("Launching ModelPredictionExample...");
                 ModelPredictionExample.main(remainingArgs);
@@ -60,10 +66,11 @@ public class AppLauncher {
     }
 
     private static void printUsage() {
-        System.out.println("Usage: java -cp your-jar.jar org.hiast.batch.launcher.AppLauncher [train|predict|health]");
-        System.out.println("  train   - Launch the model training job");
-        System.out.println("  predict - Launch the model prediction example");
-        System.out.println("  health  - Start the health check server for monitoring");
+        System.out.println("Usage: java -cp your-jar.jar org.hiast.batch.launcher.AppLauncher [train|analytics|predict|health]");
+        System.out.println("  train     - Launch the model training job");
+        System.out.println("  analytics - Launch the dedicated analytics job (run before training)");
+        System.out.println("  predict   - Launch the model prediction example");
+        System.out.println("  health    - Start the health check server for monitoring");
     }
 
     /**

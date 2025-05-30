@@ -2,16 +2,20 @@ package org.hiast.batch.application.service.analytics;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.functions;
-import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
+import org.apache.spark.storage.StorageLevel;
+// import org.hiast.batch.application.pipeline.BasePipelineContext; // Not used in the provided method signature
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 import org.hiast.batch.domain.model.AnalyticsType;
 import org.hiast.batch.domain.model.DataAnalytics;
 import org.hiast.batch.domain.model.analytics.AnalyticsMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.collection.JavaConverters;
 
 import java.time.Instant;
+import java.util.ArrayList; // Import ArrayList
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -20,263 +24,391 @@ import java.util.UUID;
  * Service responsible for collecting user perspective tag analytics.
  * Analyzes how users perceive and describe movies through their tags,
  * providing insights into user perspectives and content perception.
- * 
+ *
  * This service provides comprehensive tag analysis including sentiment,
  * genre correlation, and user perspective insights.
+ * OPTIMIZED VERSION: Robust numeric getters, column pruning, and broadcast joins.
  */
 public class TagAnalyticsService implements AnalyticsCollector {
-    
+
     private static final Logger log = LoggerFactory.getLogger(TagAnalyticsService.class);
-    
+
+    // Helper method for robustly getting a double value from a Row
+    private double getDoubleFromRow(Row row, String fieldName, double defaultValue) {
+        try {
+            int fieldIndex = row.fieldIndex(fieldName);
+            if (row.isNullAt(fieldIndex)) {
+                return defaultValue;
+            }
+            Object value = row.get(fieldIndex);
+            if (value instanceof Number) {
+                return ((Number) value).doubleValue();
+            }
+            return Double.parseDouble(value.toString());
+        } catch (Exception e) {
+            log.warn("Failed to get double for field '{}' from row. Value: '{}'. Error: {}. Returning default: {}",
+                    fieldName, row.getAs(fieldName), e.getMessage(), defaultValue);
+            return defaultValue;
+        }
+    }
+
+    // Helper method for robustly getting a long value from a Row
+    private long getLongFromRow(Row row, String fieldName, long defaultValue) {
+        try {
+            int fieldIndex = row.fieldIndex(fieldName);
+            if (row.isNullAt(fieldIndex)) {
+                return defaultValue;
+            }
+            Object value = row.get(fieldIndex);
+            if (value instanceof Number) {
+                return ((Number) value).longValue();
+            }
+            return Long.parseLong(value.toString());
+        } catch (Exception e) {
+            log.warn("Failed to get long for field '{}' from row. Value: '{}'. Error: {}. Returning default: {}",
+                    fieldName, row.getAs(fieldName), e.getMessage(), defaultValue);
+            return defaultValue;
+        }
+    }
+
+    // Helper method for robustly getting an int value from a Row
+    private int getIntFromRow(Row row, String fieldName, int defaultValue) {
+        try {
+            int fieldIndex = row.fieldIndex(fieldName);
+            if (row.isNullAt(fieldIndex)) {
+                return defaultValue;
+            }
+            Object value = row.get(fieldIndex);
+            if (value instanceof Number) {
+                return ((Number) value).intValue();
+            }
+            return Integer.parseInt(value.toString());
+        } catch (Exception e) {
+            log.warn("Failed to get int for field '{}' from row. Value: '{}'. Error: {}. Returning default: {}",
+                    fieldName, row.getAs(fieldName), e.getMessage(), defaultValue);
+            return defaultValue;
+        }
+    }
+
+
     @Override
     public List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
                                                 Dataset<Row> moviesData,
-                                                Dataset<Row> tagsData,
-                                                ALSTrainingPipelineContext context) {
-        
+                                                Dataset<Row> tagsData) {
+
         if (!canProcess(ratingsDf, moviesData, tagsData)) {
             throw new AnalyticsCollectionException("TAG_ANALYTICS", "Insufficient data for tag analytics");
         }
-        
+
+
+
+        List<DataAnalytics> collectedAnalytics = new ArrayList<>(); // Use a new list for this execution
+
         try {
-            log.info("Collecting user perspective tag analytics...");
-            
+            log.info("Collecting user perspective tag analytics (Optimized)...");
             AnalyticsMetrics metrics = AnalyticsMetrics.builder();
-            
+
             if (tagsData == null || tagsData.isEmpty()) {
                 log.warn("Tags data not available - user perspective analytics will be limited");
                 metrics.addMetric("tagDataAvailable", false)
-                       .addMetric("note", "Tags data not available for user perspective analysis");
+                        .addMetric("note", "Tags data not available for user perspective analysis");
             } else {
+                // Persist tagsData if it's going to be used multiple times and isn't already cached
+                // boolean tagsDataWasCached = tagsData.storageLevel().useMemory();
+                // if (!tagsDataWasCached) {
+                //     tagsData.persist(StorageLevel.MEMORY_AND_DISK_SER());
+                //     log.debug("Persisted tagsData for TagAnalyticsService.");
+                // }
+
                 log.info("Analyzing user perspectives through tags...");
                 metrics.addMetric("tagDataAvailable", true);
 
-                // Collect all tag analytics - exact same as original
                 collectBasicTagStatistics(tagsData, metrics);
                 collectPopularTags(tagsData, metrics);
                 collectTagSentimentAnalysis(tagsData, metrics);
-                collectGenreTagAnalysis(tagsData, moviesData, metrics);
+                collectGenreTagAnalysis(tagsData, moviesData, metrics); // moviesData can be null here
                 collectTagRatingCorrelation(tagsData, ratingsDf, metrics);
+
+                // if (!tagsDataWasCached) {
+                //     tagsData.unpersist();
+                //     log.debug("Unpersisted tagsData in TagAnalyticsService.");
+                // }
             }
-            
+
             log.info("User perspective tag analytics collection completed with {} metrics", metrics.size());
-            
-            return Collections.singletonList(new DataAnalytics(
+
+            collectedAnalytics.add(new DataAnalytics(
                     "user_perspective_tags_" + UUID.randomUUID().toString().substring(0, 8),
                     Instant.now(),
-                    AnalyticsType.USER_ENGAGEMENT, // Using existing type as in original
+                    AnalyticsType.USER_ENGAGEMENT, // As per original, though TAG_ANALYTICS might be more fitting if enum exists
                     metrics.build(),
                     "User perspective analytics through tags showing how users perceive and describe movies"
             ));
-            
+            return collectedAnalytics;
+
         } catch (Exception e) {
             log.error("Error collecting user perspective tag analytics: {}", e.getMessage(), e);
             throw new AnalyticsCollectionException("TAG_ANALYTICS", e.getMessage(), e);
         }
     }
-    
-    /**
-     * Collects basic tag statistics - exact same as original.
-     */
+
     private void collectBasicTagStatistics(Dataset<Row> tagsData, AnalyticsMetrics metrics) {
         log.debug("Collecting basic tag statistics...");
-        
-        // Basic tag statistics - exact same as original
+        // These are full scans, ensure tagsData is cached if used multiple times before this.
         long totalTags = tagsData.count();
-        long uniqueTags = tagsData.select("tag").distinct().count();
-        long uniqueTaggedMovies = tagsData.select("movieId").distinct().count();
-        long uniqueTaggingUsers = tagsData.select("userId").distinct().count();
+        metrics.addMetric("totalTags", totalTags);
 
-        metrics.addMetric("totalTags", totalTags)
-               .addMetric("uniqueTags", uniqueTags)
-               .addMetric("uniqueTaggedMovies", uniqueTaggedMovies)
-               .addMetric("uniqueTaggingUsers", uniqueTaggingUsers)
-               .addMetric("avgTagsPerMovie", (double) totalTags / uniqueTaggedMovies)
-               .addMetric("avgTagsPerUser", (double) totalTags / uniqueTaggingUsers);
-        
+        if (totalTags > 0) {
+            long uniqueTags = tagsData.select("tag").distinct().count();
+            long uniqueTaggedMovies = tagsData.select("movieId").distinct().count();
+            long uniqueTaggingUsers = tagsData.select("userId").distinct().count();
+
+            metrics.addMetric("uniqueTags", uniqueTags)
+                    .addMetric("uniqueTaggedMovies", uniqueTaggedMovies)
+                    .addMetric("uniqueTaggingUsers", uniqueTaggingUsers);
+
+            if (uniqueTaggedMovies > 0) {
+                metrics.addMetric("avgTagsPerMovie", (double) totalTags / uniqueTaggedMovies);
+            } else {
+                metrics.addMetric("avgTagsPerMovie", 0.0);
+            }
+            if (uniqueTaggingUsers > 0) {
+                metrics.addMetric("avgTagsPerUser", (double) totalTags / uniqueTaggingUsers);
+            } else {
+                metrics.addMetric("avgTagsPerUser", 0.0);
+            }
+        } else {
+            metrics.addMetric("uniqueTags", 0L)
+                    .addMetric("uniqueTaggedMovies", 0L)
+                    .addMetric("uniqueTaggingUsers", 0L)
+                    .addMetric("avgTagsPerMovie", 0.0)
+                    .addMetric("avgTagsPerUser", 0.0);
+        }
         log.debug("Basic tag statistics collected");
     }
-    
-    /**
-     * Collects popular tags analysis - exact same as original.
-     */
+
     private void collectPopularTags(Dataset<Row> tagsData, AnalyticsMetrics metrics) {
         log.debug("Collecting popular tags...");
-        
-        // Most popular tags across all movies - exact same as original
-        Dataset<Row> popularTags = tagsData
+        // Select only necessary columns for this aggregation
+        Dataset<Row> relevantTagsForPopularity = tagsData.select("tag", "movieId", "userId");
+
+        Dataset<Row> popularTags = relevantTagsForPopularity
                 .groupBy("tag")
                 .agg(
-                        functions.count("tag").as("tagCount"),
+                        functions.count("tag").as("tagCount"), // Count occurrences of the tag
                         functions.countDistinct("movieId").as("moviesTagged"),
                         functions.countDistinct("userId").as("usersWhoTagged")
                 )
                 .orderBy(functions.desc("tagCount"))
-                .limit(20);
+                .limit(20); // This result is small
 
-        // Add popular tags to metrics - exact same keys as original
-        popularTags.collectAsList().forEach(row -> {
-            String tag = row.getString(0);
-            long tagCount = row.getLong(1);
-            long moviesTagged = row.getLong(2);
-            long usersWhoTagged = row.getLong(3);
+        // .collectAsList() on 20 rows is fine.
+        List<Row> collectedPopularTags = popularTags.collectAsList();
+        for(Row row : collectedPopularTags) {
+            String tag = row.getString(row.fieldIndex("tag"));
+            long tagCount = getLongFromRow(row, "tagCount", 0L);
+            long moviesTagged = getLongFromRow(row, "moviesTagged", 0L);
+            long usersWhoTagged = getLongFromRow(row, "usersWhoTagged", 0L);
 
-            String safeTag = tag.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+            String safeTag = tag != null ? tag.replaceAll("[^a-zA-Z0-9]", "").toLowerCase() : "nulltag";
+            if (safeTag.isEmpty()) safeTag = "emptyTag"; // Ensure key is not empty
+
             metrics.addMetric("popularTag_" + safeTag + "_name", tag)
-                   .addMetric("popularTag_" + safeTag + "_count", tagCount)
-                   .addMetric("popularTag_" + safeTag + "_moviesTagged", moviesTagged)
-                   .addMetric("popularTag_" + safeTag + "_usersWhoTagged", usersWhoTagged);
-        });
-        
+                    .addMetric("popularTag_" + safeTag + "_count", tagCount)
+                    .addMetric("popularTag_" + safeTag + "_moviesTagged", moviesTagged)
+                    .addMetric("popularTag_" + safeTag + "_usersWhoTagged", usersWhoTagged);
+        }
         log.debug("Popular tags collected");
     }
-    
-    /**
-     * Collects tag sentiment analysis - exact same as original.
-     */
+
     private void collectTagSentimentAnalysis(Dataset<Row> tagsData, AnalyticsMetrics metrics) {
         log.debug("Collecting tag sentiment analysis...");
-        
-        // Tag sentiment analysis (based on common positive/negative words) - exact same as original
         String[] positiveWords = {"good", "great", "excellent", "amazing", "awesome", "fantastic", "wonderful", "brilliant", "outstanding", "perfect"};
         String[] negativeWords = {"bad", "terrible", "awful", "horrible", "worst", "boring", "stupid", "disappointing", "waste", "sucks"};
 
         long positiveTags = 0;
         long negativeTags = 0;
 
-        for (String word : positiveWords) {
-            long count = tagsData.filter(functions.lower(functions.col("tag")).contains(word)).count();
-            positiveTags += count;
-        }
+        // Select only the 'tag' column for filtering
+        Dataset<Row> tagColumnOnly = tagsData.select(functions.lower(functions.col("tag")).as("lower_tag"));
+        tagColumnOnly.persist(StorageLevel.MEMORY_AND_DISK_SER()); // Cache for multiple filters
 
-        for (String word : negativeWords) {
-            long count = tagsData.filter(functions.lower(functions.col("tag")).contains(word)).count();
-            negativeTags += count;
+        for (String word : positiveWords) {
+            positiveTags += tagColumnOnly.filter(functions.col("lower_tag").contains(word)).count();
         }
+        for (String word : negativeWords) {
+            negativeTags += tagColumnOnly.filter(functions.col("lower_tag").contains(word)).count();
+        }
+        tagColumnOnly.unpersist();
 
         metrics.addMetric("positiveTags", positiveTags)
-               .addMetric("negativeTags", negativeTags)
-               .addMetric("sentimentRatio", negativeTags > 0 ? (double) positiveTags / negativeTags : positiveTags);
-        
+                .addMetric("negativeTags", negativeTags);
+        if (negativeTags > 0) {
+            metrics.addMetric("sentimentRatio", (double) positiveTags / negativeTags);
+        } else if (positiveTags > 0) {
+            metrics.addMetric("sentimentRatio", Double.POSITIVE_INFINITY); // Or a large number
+        } else {
+            metrics.addMetric("sentimentRatio", 0.0);
+        }
         log.debug("Tag sentiment analysis collected");
     }
-    
-    /**
-     * Collects genre-based tag analysis - exact same as original.
-     */
+
     private void collectGenreTagAnalysis(Dataset<Row> tagsData, Dataset<Row> moviesData, AnalyticsMetrics metrics) {
         log.debug("Collecting genre-based tag analysis...");
-        
-        // Genre-based tag analysis (if movies data is available) - exact same as original
-        if (moviesData != null && !moviesData.isEmpty()) {
-            log.debug("Analyzing tags by genre...");
-
-            // Join tags with movies to get genre information - exact same as original
-            Dataset<Row> tagsWithGenres = tagsData
-                    .join(moviesData, "movieId")
-                    .select(
-                            functions.col("tag"),
-                            functions.explode(functions.split(functions.col("genres"), "\\|")).as("genre")
-                    )
-                    .filter(functions.col("genre").notEqual("(no genres listed)"));
-
-            // Most common tags per genre - exact same as original
-            Dataset<Row> genreTagAnalysis = tagsWithGenres
-                    .groupBy("genre", "tag")
-                    .count()
-                    .withColumnRenamed("count", "tagCount")
-                    .withColumn("rank", functions.row_number().over(
-                            org.apache.spark.sql.expressions.Window
-                                    .partitionBy("genre")
-                                    .orderBy(functions.desc("tagCount"))
-                    ))
-                    .filter(functions.col("rank").leq(3)); // Top 3 tags per genre
-
-            // Add genre-tag insights to metrics - exact same keys as original
-            genreTagAnalysis.collectAsList().forEach(row -> {
-                String genre = row.getString(0);
-                String tag = row.getString(1);
-                long tagCount = row.getLong(2);
-                int rank = row.getInt(3);
-
-                String safeGenre = genre.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-                String safeTag = tag.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-
-                metrics.addMetric("genre_" + safeGenre + "_topTag" + rank + "_name", tag)
-                       .addMetric("genre_" + safeGenre + "_topTag" + rank + "_count", tagCount);
-            });
-
-            metrics.addMetric("genreTagAnalysisAvailable", true);
-        } else {
+        if (moviesData == null || moviesData.isEmpty()) {
             metrics.addMetric("genreTagAnalysisAvailable", false);
+            log.warn("Movies data not available for genre-tag analysis.");
+            return;
         }
-        
+        log.debug("Analyzing tags by genre...");
+
+        // --- OPTIMIZATION: Select only necessary columns before join and broadcast ---
+        Dataset<Row> relevantTagsForGenreAnalysis = tagsData.select("movieId", "tag");
+        Dataset<Row> relevantMoviesForGenreAnalysis = moviesData.select("movieId", "genres");
+
+        Dataset<Row> tagsWithGenres = relevantTagsForGenreAnalysis
+                .join(functions.broadcast(relevantMoviesForGenreAnalysis), // Broadcast smaller moviesData
+                        relevantTagsForGenreAnalysis.col("movieId").equalTo(relevantMoviesForGenreAnalysis.col("movieId")), "inner")
+                .select(
+                        relevantTagsForGenreAnalysis.col("tag"),
+                        functions.explode(functions.split(relevantMoviesForGenreAnalysis.col("genres"), "\\|")).as("genre")
+                )
+                .filter(functions.col("genre").notEqual("(no genres listed)"))
+                .filter(functions.col("genre").isNotNull())
+                .filter(functions.length(functions.col("genre")).gt(0));
+
+        // This DataFrame can be large after explode, persist it before window function
+        tagsWithGenres.persist(StorageLevel.MEMORY_AND_DISK_SER());
+        log.debug("Persisted tagsWithGenres for genre-tag analysis. Count: {}", tagsWithGenres.count());
+
+
+        Dataset<Row> genreTagAnalysis = tagsWithGenres
+                .groupBy("genre", "tag")
+                .count() // This count is the number of times a tag appears for a genre
+                .withColumnRenamed("count", "tagCount")
+                .withColumn("rank", functions.row_number().over(
+                        org.apache.spark.sql.expressions.Window
+                                .partitionBy("genre")
+                                .orderBy(functions.desc("tagCount"))
+                ))
+                .filter(functions.col("rank").leq(3)); // Top 3 tags per genre
+
+        // This result (genreTagAnalysis) should be small (num_genres * 3)
+        List<Row> collectedGenreTags = genreTagAnalysis.collectAsList();
+        tagsWithGenres.unpersist(); // Unpersist intermediate DataFrame
+        log.debug("Unpersisted tagsWithGenres.");
+
+        for(Row row : collectedGenreTags) {
+            String genre = row.getString(row.fieldIndex("genre"));
+            String tag = row.getString(row.fieldIndex("tag"));
+            long tagCount = getLongFromRow(row, "tagCount", 0L);
+            int rank = getIntFromRow(row, "rank", 0);
+
+            String safeGenre = genre != null ? genre.replaceAll("[^a-zA-Z0-9]", "").toLowerCase() : "nullgenre";
+            String safeTag = tag != null ? tag.replaceAll("[^a-zA-Z0-9]", "").toLowerCase() : "nulltag";
+            if (safeGenre.isEmpty()) safeGenre = "emptyGenre";
+            if (safeTag.isEmpty()) safeTag = "emptyTag";
+
+            metrics.addMetric("genre_" + safeGenre + "_topTag" + rank + "_name", tag)
+                    .addMetric("genre_" + safeGenre + "_topTag" + rank + "_count", tagCount);
+        }
+        metrics.addMetric("genreTagAnalysisAvailable", true);
         log.debug("Genre-based tag analysis collected");
     }
-    
-    /**
-     * Collects tag correlation with ratings - exact same as original.
-     */
+
     private void collectTagRatingCorrelation(Dataset<Row> tagsData, Dataset<Row> ratingsDf, AnalyticsMetrics metrics) {
         log.debug("Collecting tag-rating correlation...");
-        
-        // Tag correlation with ratings (if we can join the data) - exact same as original
-        Dataset<Row> tagsAlias = tagsData.alias("tags");
-        Dataset<Row> ratingsAlias = ratingsDf.alias("ratings");
-        
-        Dataset<Row> tagsWithRatings = tagsAlias
-                .join(ratingsAlias, 
-                        functions.col("tags.movieId").equalTo(functions.col("ratings.movieId"))
-                        .and(functions.col("tags.userId").equalTo(functions.col("ratings.userId"))))
+
+        // --- OPTIMIZATION: Select only necessary columns before join ---
+        Dataset<Row> relevantTagsForCorrelation = tagsData.select(
+                functions.col("movieId"),
+                functions.col("userId"),
+                functions.col("tag")
+        );
+        Dataset<Row> relevantRatingsForCorrelation = ratingsDf.select(
+                functions.col("movieId"),
+                functions.col("userId"),
+                functions.col("ratingActual")
+        );
+
+        // Determine which DataFrame is smaller for potential broadcast.
+        // For MovieLens, tagsData is often smaller than ratingsDf.
+        // If tagsData is significantly smaller, broadcast it.
+        // This assumes tagsData is smaller. If not, this strategy might need adjustment or rely on AQE.
+        Dataset<Row> tagsWithRatings = relevantRatingsForCorrelation
+                .join(functions.broadcast(relevantTagsForCorrelation), // Broadcast pruned tagsData
+                        JavaConverters.asScalaBufferConverter(java.util.Arrays.asList("movieId", "userId")).asScala().toSeq(), // Join on multiple columns
+                        "inner")
                 .select(
-                        functions.col("tags.tag"),
-                        functions.col("ratings.ratingActual")
+                        relevantTagsForCorrelation.col("tag"),
+                        relevantRatingsForCorrelation.col("ratingActual")
                 );
 
-        if (!tagsWithRatings.isEmpty()) {
-            // Average rating for movies with specific tags - exact same as original
-            Dataset<Row> tagRatingCorrelation = tagsWithRatings
-                    .groupBy("tag")
-                    .agg(
-                            functions.avg("ratingActual").as("avgRating"),
-                            functions.count("ratingActual").as("ratingCount")
-                    )
-                    .filter(functions.col("ratingCount").gt(5)) // Only tags with sufficient data
-                    .orderBy(functions.desc("avgRating"))
-                    .limit(10);
+        // Persist if tagsWithRatings is large and used multiple times, though here it's used once for aggregation.
+        // tagsWithRatings.persist(StorageLevel.MEMORY_AND_DISK_SER());
+        // log.debug("Persisted tagsWithRatings for correlation. Count: {}", tagsWithRatings.count());
 
-            // Add tag-rating correlation to metrics - exact same keys as original
-            tagRatingCorrelation.collectAsList().forEach(row -> {
-                String tag = row.getString(0);
-                double avgRating = row.getDouble(1);
-                long ratingCount = row.getLong(2);
 
-                String safeTag = tag.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-                metrics.addMetric("highRatedTag_" + safeTag + "_name", tag)
-                       .addMetric("highRatedTag_" + safeTag + "_avgRating", avgRating)
-                       .addMetric("highRatedTag_" + safeTag + "_ratingCount", ratingCount);
-            });
-
-            metrics.addMetric("tagRatingCorrelationAvailable", true);
-        } else {
+        if (tagsWithRatings.isEmpty()) { // Check if join resulted in empty DF
             metrics.addMetric("tagRatingCorrelationAvailable", false);
+            log.warn("No correlation data between tags and ratings after join.");
+            // if (tagsWithRatings.storageLevel().useMemory()) tagsWithRatings.unpersist();
+            return;
         }
-        
+
+        Dataset<Row> tagRatingCorrelation = tagsWithRatings
+                .groupBy("tag")
+                .agg(
+                        functions.avg("ratingActual").as("avgRating"),
+                        functions.count("ratingActual").as("ratingCount")
+                )
+                .filter(functions.col("ratingCount").gt(5))
+                .orderBy(functions.desc("avgRating"))
+                .limit(10); // Result is small
+
+        // if (tagsWithRatings.storageLevel().useMemory()) tagsWithRatings.unpersist();
+        // log.debug("Unpersisted tagsWithRatings.");
+
+        List<Row> collectedTagRatings = tagRatingCorrelation.collectAsList();
+        if (collectedTagRatings.isEmpty()) {
+            metrics.addMetric("tagRatingCorrelationAvailable", false);
+            log.warn("No tag-rating correlation data met the filter criteria (count > 5).");
+            return;
+        }
+
+
+        for(Row row : collectedTagRatings) {
+            String tag = row.getString(row.fieldIndex("tag"));
+            double avgRating = getDoubleFromRow(row, "avgRating", 0.0);
+            long ratingCount = getLongFromRow(row, "ratingCount", 0L);
+
+            String safeTag = tag != null ? tag.replaceAll("[^a-zA-Z0-9]", "").toLowerCase() : "nulltag";
+            if (safeTag.isEmpty()) safeTag = "emptyTag";
+
+            metrics.addMetric("highRatedTag_" + safeTag + "_name", tag)
+                    .addMetric("highRatedTag_" + safeTag + "_avgRating", avgRating)
+                    .addMetric("highRatedTag_" + safeTag + "_ratingCount", ratingCount);
+        }
+        metrics.addMetric("tagRatingCorrelationAvailable", true);
         log.debug("Tag-rating correlation collected");
     }
-    
+
     @Override
     public String getAnalyticsType() {
-        return "TAG_ANALYTICS";
+        return "TAG_ANALYTICS"; // Consider defining AnalyticsType.TAG_ANALYTICS
     }
-    
+
     @Override
     public boolean canProcess(Dataset<Row> ratingsDf, Dataset<Row> moviesData, Dataset<Row> tagsData) {
-        return ratingsDf != null && !ratingsDf.isEmpty(); // Can process even without tags data
+        // This service heavily relies on tagsData for most of its metrics.
+        // While some basic stats could be run on ratingsDf, the core value is from tags.
+        // The original code had a check for tagsData within collectAnalytics.
+        // For canProcess, it might be better to require tagsData.
+        return ratingsDf != null && !ratingsDf.isEmpty() && tagsData != null && !tagsData.isEmpty();
     }
-    
+
     @Override
     public int getPriority() {
-        return 50; // Lower priority since it depends on tags data availability
+        return 50;
     }
 }

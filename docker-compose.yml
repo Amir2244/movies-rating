@@ -28,7 +28,7 @@ services:
       - app-network
 
   spark-master:
-    image: apache/spark:3.5.0-hadoop3
+    image: bde2020/spark-master
     container_name: spark-master
     environment:
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
@@ -40,52 +40,125 @@ services:
       - ./batch-training-service/target/batch-training-service.jar:/opt/spark-apps/batch-training-service.jar
       - ./docker-volumes/spark_master_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_master_spark_logs:/opt/spark/logs
-    depends_on:
-      - namenode
-      - redis
     networks:
       - app-network
 
   spark-worker:
-    image: apache/spark:3.5.0-hadoop3
+    image: bde2020/spark-worker
     container_name: spark-worker
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=6g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
-    mem_limit: 8g
+    mem_limit: 7g
     volumes:
       - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
     depends_on:
       - spark-master
       - datanode
-      - redis
+      - redis-stack
     networks:
       - app-network
   spark-worker-2:
-    image: apache/spark:3.5.0-hadoop3
+    image: bde2020/spark-worker
     container_name: spark-worker-2
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=6g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
-    mem_limit: 8g
+    mem_limit: 7g
     volumes:
       - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
     depends_on:
       - spark-master
       - datanode
-      - redis
+      - redis-stack
     networks:
       - app-network
 
-  redis:
-    image: redis:latest
+
+  redis-stack:
+    image: redis/redis-stack:latest
     container_name: redis
+    ports:
+      - "6379:6379"     # Redis server port
+      - "8001:8001"     # RedisInsight web UI
+    environment:
+      # Redis configuration for vector database
+      - REDIS_ARGS=--save 60 1000 --appendonly yes --appendfsync everysec --maxmemory 4gb --maxmemory-policy allkeys-lru --tcp-keepalive 300 --timeout 0 --databases 16
+    env_file:
+      - ./redis-config/redis.env
     volumes:
       - ./docker-volumes/redis_data:/data
+      - ./redis-config:/usr/local/etc/redis-config:ro
+    command: >
+      redis-stack-server
+      --save 60 1000
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 4gb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 300
+      --timeout 0
+      --databases 16
+      --bind 0.0.0.0
+      --protected-mode no
+      --hash-max-ziplist-entries 1024
+      --hash-max-ziplist-value 1024
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 128
+      --latency-monitor-threshold 100
+    mem_limit: 5g
+    mem_reservation: 4g
+    cpus: 2.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app-network
+
+  redis-init:
+    image: redis/redis-stack:latest
+    container_name: redis-init
+    depends_on:
+      redis-stack:
+        condition: service_healthy
+    volumes:
+      - ./redis-config:/scripts:ro
+    command: >
+      sh -c "
+        echo 'Waiting for Redis to be ready...' &&
+        until redis-cli -h redis ping; do
+          echo 'Redis is unavailable - sleeping' &&
+          sleep 1
+        done &&
+        echo 'Redis is ready! Initializing vector database...' &&
+
+        echo 'Creating user factors vector index...' &&
+        redis-cli -h redis FT.CREATE user_factors_idx ON HASH PREFIX 1 'user_factor:' SCHEMA userId NUMERIC SORTABLE factors VECTOR FLAT 6 TYPE FLOAT32 DIM 50 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
+
+        echo 'Creating item factors vector index...' &&
+        redis-cli -h redis FT.CREATE item_factors_idx ON HASH PREFIX 1 'item_factor:' SCHEMA itemId NUMERIC SORTABLE factors VECTOR FLAT 6 TYPE FLOAT32 DIM 50 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
+
+        echo 'Creating movie metadata index...' &&
+        redis-cli -h redis FT.CREATE movie_metadata_idx ON HASH PREFIX 1 'movie:' SCHEMA movieId NUMERIC SORTABLE title TEXT SORTABLE genres TAG SEPARATOR '|' year NUMERIC SORTABLE &&
+
+        echo 'Creating user recommendations cache index...' &&
+        redis-cli -h redis FT.CREATE user_recommendations_idx ON HASH PREFIX 1 'user_rec:' SCHEMA userId NUMERIC SORTABLE movieId NUMERIC SORTABLE rating NUMERIC SORTABLE timestamp NUMERIC SORTABLE modelVersion TAG &&
+
+        echo 'Vector database initialization completed!' &&
+        redis-cli -h redis FT._LIST &&
+        echo 'Redis Vector Database is ready for use!'
+      "
+    restart: "no"
     networks:
       - app-network
   mongodb:

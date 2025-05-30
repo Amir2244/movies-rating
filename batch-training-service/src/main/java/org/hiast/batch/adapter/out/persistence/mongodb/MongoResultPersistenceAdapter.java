@@ -91,7 +91,8 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
                         bulkOperations.clear();
                     }
                 } catch (Exception e) {
-                    log.error("Error preparing recommendations for user {}: {}", userRecs.getUserId(), e.getMessage(), e);
+                    log.error("Error preparing recommendations for user {}: {}",
+                            userRecs != null ? userRecs.getUserId() : "unknown", e.getMessage(), e);
                 }
             }
 
@@ -124,27 +125,35 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
      * Converts a UserRecommendations object to a MongoDB Document.
      */
     private Document convertToDocument(UserRecommendations userRecs) {
+        if (userRecs == null) {
+            throw new IllegalArgumentException("UserRecommendations cannot be null");
+        }
+
         Document document = new Document();
         document.append("userId", userRecs.getUserId());
         document.append("generatedAt", Date.from(userRecs.getGeneratedAt()));
         document.append("modelVersion", userRecs.getModelVersion());
 
         List<Document> recommendationDocs = new ArrayList<>();
-        for (MovieRecommendation rec : userRecs.getRecommendations()) {
-            Document recDoc = new Document()
-                    .append("movieId", rec.getMovieId())
-                    .append("rating", rec.getRating())
-                    .append("generatedAt", Date.from(rec.getGeneratedAt()));
+        if (userRecs.getRecommendations() != null) {
+            for (MovieRecommendation rec : userRecs.getRecommendations()) {
+                if (rec != null) {  // Additional null check for individual recommendations
+                    Document recDoc = new Document()
+                            .append("movieId", rec.getMovieId())
+                            .append("rating", rec.getRating())
+                            .append("generatedAt", Date.from(rec.getGeneratedAt()));
 
-            // Add movie metadata if available
-            if (rec.getMovieTitle() != null) {
-                recDoc.append("movieTitle", rec.getMovieTitle());
-            }
-            if (rec.getMovieGenres() != null && !rec.getMovieGenres().isEmpty()) {
-                recDoc.append("movieGenres", rec.getMovieGenres());
-            }
+                    // Add movie metadata if available
+                    if (rec.getMovieTitle() != null) {
+                        recDoc.append("movieTitle", rec.getMovieTitle());
+                    }
+                    if (rec.getMovieGenres() != null && !rec.getMovieGenres().isEmpty()) {
+                        recDoc.append("movieGenres", rec.getMovieGenres());
+                    }
 
-            recommendationDocs.add(recDoc);
+                    recommendationDocs.add(recDoc);
+                }
+            }
         }
 
         document.append("recommendations", recommendationDocs);

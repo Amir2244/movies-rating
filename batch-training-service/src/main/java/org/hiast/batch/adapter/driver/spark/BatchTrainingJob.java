@@ -67,7 +67,7 @@ public final class BatchTrainingJob {
         );
         SparkConf sparkConf = sparkConfig.createSparkConf();
 
-        SparkSession spark = SparkSession.builder().config(sparkConf).getOrCreate();
+        SparkSession spark = SparkSession.builder().config(sparkConf).config("spark.executor.instances", "4").getOrCreate();
         log.info("SparkSession initialized. Spark version: {}", spark.version());
         log.info("Default FileSystem: {}", spark.sparkContext().hadoopConfiguration().get("fs.defaultFS"));
 

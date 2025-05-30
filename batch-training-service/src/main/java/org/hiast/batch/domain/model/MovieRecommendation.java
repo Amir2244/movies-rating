@@ -16,7 +16,7 @@ public class MovieRecommendation implements Serializable {
     private final int movieId;
     private final float rating;
     private final Instant generatedAt;
-    private final MovieMetaData metaData = null;
+    private final MovieMetaData metaData;  // Remove = null assignment
 
     /**
      * Constructor for MovieRecommendation without movie metadata.
@@ -37,6 +37,7 @@ public class MovieRecommendation implements Serializable {
      * @param movieId     The movie ID.
      * @param rating      The predicted rating.
      * @param generatedAt The timestamp when the recommendation was generated.
+     * @param metaData    The movie metadata (can be null).
      */
     public MovieRecommendation(int userId, int movieId, float rating, Instant generatedAt,
                                MovieMetaData metaData) {
@@ -44,6 +45,7 @@ public class MovieRecommendation implements Serializable {
         this.movieId = movieId;
         this.rating = rating;
         this.generatedAt = Objects.requireNonNull(generatedAt, "generatedAt cannot be null");
+        this.metaData = metaData;  // CRITICAL FIX: Assign the metaData parameter
     }
 
     public int getUserId() {
@@ -63,11 +65,11 @@ public class MovieRecommendation implements Serializable {
     }
 
     public String getMovieTitle() {
-        return metaData.getTitle();
+        return metaData != null ? metaData.getTitle() : null;
     }
 
     public List<String> getMovieGenres() {
-        return metaData.getGenres();
+        return metaData != null ? metaData.getGenres() : null;
     }
 
     @Override
@@ -95,8 +97,8 @@ public class MovieRecommendation implements Serializable {
                 ", movieId=" + movieId +
                 ", rating=" + rating +
                 ", generatedAt=" + generatedAt +
-                ", movieTitle='" + metaData.getTitle() + '\'' +
-                ", movieGenres=" + metaData.getGenres() +
+                ", movieTitle='" + (metaData != null ? metaData.getTitle() : "N/A") + '\'' +
+                ", movieGenres=" + (metaData != null ? metaData.getGenres() : "N/A") +
                 '}';
     }
 }

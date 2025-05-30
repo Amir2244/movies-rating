@@ -4,7 +4,6 @@ import org.apache.spark.ml.recommendation.ALSModel;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.hiast.batch.domain.model.ProcessedRating;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,22 +11,16 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * Context object that holds the state of the training pipeline.
+ * Context object that holds the state of the ALS training pipeline.
+ * Extends BasePipelineContext to inherit common data and state management.
  * This object is passed through the pipeline and updated by each filter.
  */
-public class ALSTrainingPipelineContext {
+public class ALSTrainingPipelineContext extends BasePipelineContext {
     private static final Logger log = LoggerFactory.getLogger(ALSTrainingPipelineContext.class);
 
-    private final SparkSession spark;
     private final Instant startTime;
 
-    // Pipeline data
-    private Dataset<Row> rawRatings;
-    private Dataset<Row> rawMovies;
-    private Dataset<Row> rawTags;
-    private Dataset<Row> rawLinks;
-    private Dataset<ProcessedRating> processedRatings;
-    private Dataset<Row> ratingsDf;
+    // Training-specific data
     private Dataset<Row> trainingData;
     private Dataset<Row> testData;
     private ALSModel model;
@@ -49,9 +42,9 @@ public class ALSTrainingPipelineContext {
     private Instant resultSavingCompleted;
 
     public ALSTrainingPipelineContext(SparkSession spark) {
-        this.spark = spark;
+        super(spark); // Call parent constructor
         this.startTime = Instant.now();
-        log.info("Pipeline started at: {}", startTime);
+        log.info("ALS Training Pipeline started at: {}", startTime);
     }
 
     /**
@@ -158,57 +151,7 @@ public class ALSTrainingPipelineContext {
 
 
 
-    public SparkSession getSpark() {
-        return spark;
-    }
-
-    public Dataset<Row> getRawRatings() {
-        return rawRatings;
-    }
-
-    public void setRawRatings(Dataset<Row> rawRatings) {
-        this.rawRatings = rawRatings;
-    }
-
-    public Dataset<Row> getRawMovies() {
-        return rawMovies;
-    }
-
-    public void setRawMovies(Dataset<Row> rawMovies) {
-        this.rawMovies = rawMovies;
-    }
-
-    public Dataset<Row> getRawTags() {
-        return rawTags;
-    }
-
-    public void setRawTags(Dataset<Row> rawTags) {
-        this.rawTags = rawTags;
-    }
-
-    public Dataset<Row> getRawLinks() {
-        return rawLinks;
-    }
-
-    public void setRawLinks(Dataset<Row> rawLinks) {
-        this.rawLinks = rawLinks;
-    }
-
-    public Dataset<ProcessedRating> getProcessedRatings() {
-        return processedRatings;
-    }
-
-    public void setProcessedRatings(Dataset<ProcessedRating> processedRatings) {
-        this.processedRatings = processedRatings;
-    }
-
-    public Dataset<Row> getRatingsDf() {
-        return ratingsDf;
-    }
-
-    public void setRatingsDf(Dataset<Row> ratingsDf) {
-        this.ratingsDf = ratingsDf;
-    }
+    // Common getters/setters are now inherited from BasePipelineContext
 
     public Dataset<Row> getTrainingData() {
         return trainingData;
@@ -264,5 +207,19 @@ public class ALSTrainingPipelineContext {
 
     public void setResultsSaved(boolean resultsSaved) {
         this.resultsSaved = resultsSaved;
+    }
+
+    @Override
+    public String toString() {
+        return "ALSTrainingPipelineContext{" +
+                "dataLoaded=" + dataLoaded +
+                ", movieDataLoaded=" + movieDataLoaded +
+                ", dataPreprocessed=" + dataPreprocessed +
+                ", factorsPersisted=" + factorsPersisted +
+                ", modelSaved=" + modelSaved +
+                ", resultsSaved=" + resultsSaved +
+                ", evaluationMetric=" + evaluationMetric +
+                ", startTime=" + startTime +
+                '}';
     }
 }

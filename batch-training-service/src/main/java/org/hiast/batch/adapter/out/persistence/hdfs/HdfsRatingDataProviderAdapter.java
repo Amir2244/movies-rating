@@ -158,7 +158,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                 // Get the number of cores available
                 int numCores = Runtime.getRuntime().availableProcessors();
                 // Use 2x number of cores as a reasonable default for partitions
-                int numPartitions = Math.max(2 * numCores, 4);
+                int numPartitions = Math.max(2* numCores, 4);
                 log.info("Setting number of partitions to {} based on {} available cores", numPartitions, numCores);
 
                 Dataset<Row> csvData = spark.read()
@@ -170,8 +170,6 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                         .csv(ratingsInputHdfsPath)
                         .repartition(numPartitions);
 
-                // Cache the data for better performance
-                csvData.persist(StorageLevel.MEMORY_AND_DISK());
 
                 log.info("Raw data schema from HDFS (CSV attempt):");
                 csvData.printSchema();
@@ -212,11 +210,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
         log.info("Sample of rawRatingsDataset at entry (first 5 rows, truncate=false):");
         rawRatingsDataset.show(5, false);
 
-        // Check if dataset is already cached
-        if (!rawRatingsDataset.storageLevel().useMemory()) {
-            log.info("Caching rawRatingsDataset for better performance");
-            rawRatingsDataset.persist(StorageLevel.MEMORY_AND_DISK());
-        }
+
 
         long initialRawCount = rawRatingsDataset.count();
         log.info("Count of rows in rawRatingsDataset at entry of preprocessRatings: {}", initialRawCount);
@@ -233,16 +227,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
 
             if (isBinaryValueFormat) {
                 log.info("Detected single binary 'value' column format. Attempting to parse binary data...");
-                StructType parsedSchema = new StructType()
-                        .add("userId", DataTypes.IntegerType, false).add("movieId",
-                                DataTypes.IntegerType, false)
-                        .add("rating", DataTypes.DoubleType, false).add("timestamp",
-                                DataTypes.LongType, false);
-                List<Row> parsedRows = new ArrayList<>();
-                processableData = spark.createDataFrame(parsedRows, parsedSchema);
-                log.info("Created DataFrame from parsed binary values. Schema:");
-                processableData.printSchema();
-                processableData.show(5, false);
+                throw new DataLoadingException("Parsing of single binary 'value' column Parquet files is not currently supported.");
             } else {
                 log.info("Processing structured data. Expected columns: userId, movieId, rating, timestamp.");
                 final String userIdCol = "userId";
@@ -359,7 +344,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                     .filter((FilterFunction<ProcessedRating>) rating -> rating != null);
 
             // Cache the processed ratings for better performance
-            processedRatings.persist(StorageLevel.MEMORY_AND_DISK());
+            processedRatings.persist(StorageLevel.MEMORY_AND_DISK_SER());
 
             log.info("Schema of Dataset<ProcessedRating> (reflects ProcessedRating bean):");
             processedRatings.printSchema();
@@ -441,7 +426,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                     .repartition(numPartitions);
 
             // Cache the data for better performance
-            csvData.persist(StorageLevel.MEMORY_AND_DISK());
+            csvData.persist(StorageLevel.MEMORY_AND_DISK_SER());
 
             long dataCount = csvData.count();
             long endTime = System.nanoTime();

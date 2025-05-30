@@ -39,7 +39,10 @@ public class CustomKryoRegistrator implements KryoRegistrator {
         kryo.register(RatingValue.class);
         kryo.register(UserFactor.class);
         kryo.register(ItemFactor.class);
-        
+        kryo.register(java.util.HashMap.class);
+        kryo.register(java.util.ArrayList.class);
+        kryo.register(org.hiast.batch.domain.model.MovieMetaData.class);
+        kryo.register(org.hiast.batch.domain.model.DataAnalytics.class);
         // Register Java classes used in the application
         kryo.register(ArrayList.class);
         kryo.register(HashMap.class);

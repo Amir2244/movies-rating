@@ -22,6 +22,11 @@ public enum AnalyticsType {
      */
     DATA_CONSISTENCY("Data Quality", "Validates consistency of data across sources"),
 
+    /**
+     * Analytics encompassing overall data quality aspects including completeness, freshness, and consistency.
+     */
+    DATA_QUALITY("Data Quality", "Comprehensive data quality metrics"),
+
     // === USER BEHAVIOR ANALYTICS ===
     /**
      * Analytics about user activity patterns and rating behaviors.

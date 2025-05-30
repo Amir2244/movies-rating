@@ -3,7 +3,7 @@ package org.hiast.batch.application.pipeline.filters;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.hiast.batch.application.pipeline.Filter;
-import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
+import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +12,9 @@ import org.slf4j.LoggerFactory;
  * Filter that loads additional MovieLens data files (movies, tags, links) from HDFS.
  * This filter runs after the main ratings data is loaded and provides additional
  * metadata for comprehensive analytics.
+ * Works with both ALSTrainingPipelineContext and AnalyticsPipelineContext via BasePipelineContext.
  */
-public class MovieDataLoadingFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
+public class MovieDataLoadingFilter<T extends BasePipelineContext> implements Filter<T, T> {
     private static final Logger log = LoggerFactory.getLogger(MovieDataLoadingFilter.class);
     
     private final RatingDataProviderPort ratingDataProvider;
@@ -23,7 +24,7 @@ public class MovieDataLoadingFilter implements Filter<ALSTrainingPipelineContext
     }
     
     @Override
-    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
+    public T process(T context) {
         log.info("Loading additional MovieLens data files...");
         
         try {
@@ -79,7 +80,8 @@ public class MovieDataLoadingFilter implements Filter<ALSTrainingPipelineContext
             }
             log.warn("Continuing pipeline with empty additional datasets due to loading errors");
         }
-        
+
+        context.setMovieDataLoaded(true);
         return context;
     }
 }

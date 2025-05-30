@@ -3,7 +3,7 @@ package org.hiast.batch.application.service.analytics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.functions;
-import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
+import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 import org.hiast.batch.domain.model.AnalyticsType;
 import org.hiast.batch.domain.model.DataAnalytics;
@@ -32,8 +32,7 @@ public class RatingDistributionAnalyticsService implements AnalyticsCollector {
     @Override
     public List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
                                  Dataset<Row> moviesData,
-                                 Dataset<Row> tagsData,
-                                 ALSTrainingPipelineContext context) {
+                                 Dataset<Row> tagsData) {
 
         if (!canProcess(ratingsDf, moviesData, tagsData)) {
             throw new AnalyticsCollectionException("RATING_DISTRIBUTION", "Insufficient data for rating distribution analytics");

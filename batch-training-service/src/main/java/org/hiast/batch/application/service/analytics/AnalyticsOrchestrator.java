@@ -2,7 +2,7 @@ package org.hiast.batch.application.service.analytics;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
-import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
+import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 import org.hiast.batch.domain.model.DataAnalytics;
@@ -36,7 +36,7 @@ public class AnalyticsOrchestrator {
     
     private final AnalyticsPersistencePort analyticsPersistence;
     private final List<AnalyticsCollector> collectors;
-    private final ExecutorService executorService;
+
     
     /**
      * Creates a new analytics orchestrator with default collectors.
@@ -46,7 +46,7 @@ public class AnalyticsOrchestrator {
     public AnalyticsOrchestrator(AnalyticsPersistencePort analyticsPersistence) {
         this.analyticsPersistence = analyticsPersistence;
         this.collectors = AnalyticsCollectorFactory.createAllCollectors();
-        this.executorService = Executors.newFixedThreadPool(Math.min(collectors.size(), 4));
+
         
         log.info("Analytics orchestrator initialized with {} collectors", collectors.size());
     }
@@ -61,18 +61,17 @@ public class AnalyticsOrchestrator {
                                List<AnalyticsCollector> collectors) {
         this.analyticsPersistence = analyticsPersistence;
         this.collectors = new ArrayList<>(collectors);
-        this.executorService = Executors.newFixedThreadPool(Math.min(collectors.size(), 4));
         
         log.info("Analytics orchestrator initialized with {} custom collectors", collectors.size());
     }
     
     /**
      * Executes all analytics collection and persistence.
-     * 
+     *
      * @param context The pipeline context containing all datasets
      * @return AnalyticsExecutionResult containing success/failure information
      */
-    public AnalyticsExecutionResult executeAnalytics(ALSTrainingPipelineContext context) {
+    public AnalyticsExecutionResult executeAnalytics(BasePipelineContext context) {
         log.info("Starting comprehensive analytics collection...");
         
         Dataset<Row> ratingsDf = context.getRatingsDf();
@@ -91,7 +90,7 @@ public class AnalyticsOrchestrator {
         
         // Execute analytics collection for each collector
         for (AnalyticsCollector collector : collectors) {
-            executeCollectorAnalytics(collector, ratingsDf, moviesData, tagsData, context, resultBuilder);
+            executeCollectorAnalytics(collector, ratingsDf, moviesData, tagsData, resultBuilder);
         }
         
         AnalyticsExecutionResult result = resultBuilder.build();
@@ -102,16 +101,7 @@ public class AnalyticsOrchestrator {
         return result;
     }
     
-    /**
-     * Executes analytics collection asynchronously for better performance.
-     * 
-     * @param context The pipeline context containing all datasets
-     * @return CompletableFuture with the execution result
-     */
-    public CompletableFuture<AnalyticsExecutionResult> executeAnalyticsAsync(ALSTrainingPipelineContext context) {
-        return CompletableFuture.supplyAsync(() -> executeAnalytics(context), executorService);
-    }
-    
+
     /**
      * Executes analytics collection for a specific collector.
      */
@@ -119,7 +109,6 @@ public class AnalyticsOrchestrator {
                                          Dataset<Row> ratingsDf,
                                          Dataset<Row> moviesData,
                                          Dataset<Row> tagsData,
-                                         ALSTrainingPipelineContext context,
                                          AnalyticsExecutionResult.Builder resultBuilder) {
         
         String collectorType = collector.getAnalyticsType();
@@ -135,7 +124,7 @@ public class AnalyticsOrchestrator {
             }
 
             // Collect analytics
-            List<DataAnalytics> analytics = collector.collectAnalytics(ratingsDf, moviesData, tagsData, context);
+            List<DataAnalytics> analytics = collector.collectAnalytics(ratingsDf, moviesData, tagsData);
 
            for( DataAnalytics analytic : analytics ) {
                boolean saved = persistAnalytics(analytic);
@@ -194,16 +183,7 @@ public class AnalyticsOrchestrator {
             log.warn("Error registering temporary views: {}", e.getMessage());
         }
     }
-    
-    /**
-     * Shuts down the executor service.
-     */
-    public void shutdown() {
-        if (executorService != null && !executorService.isShutdown()) {
-            executorService.shutdown();
-            log.info("Analytics orchestrator executor service shut down");
-        }
-    }
+
     
     /**
      * Gets the number of configured collectors.
