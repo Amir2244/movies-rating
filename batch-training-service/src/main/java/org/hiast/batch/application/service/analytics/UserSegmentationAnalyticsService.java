@@ -4,7 +4,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.functions;
 import org.apache.spark.storage.StorageLevel;
-// import org.hiast.batch.application.pipeline.BasePipelineContext; // Not used
+// import org.hiast.batch.application.pipeline.BasePipelineContext; // Not used in the provided method signature
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 import org.hiast.batch.domain.model.AnalyticsType;
 import org.hiast.batch.domain.model.DataAnalytics;
@@ -13,10 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.ArrayList; // Import ArrayList
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Service responsible for collecting user segmentation analytics.
@@ -25,7 +22,7 @@ import java.util.UUID;
  * <p>
  * This service generates a separate analytics document focused specifically
  * on user segmentation metrics.
- * OPTIMIZED VERSION v2: Further reduces Spark actions by combining counts.
+ * OPTIMIZED VERSION v3: Combines totalUsers count with other segment counts.
  */
 public class UserSegmentationAnalyticsService implements AnalyticsCollector {
 
@@ -81,7 +78,7 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
         List<DataAnalytics> collectedAnalytics = new ArrayList<>();
 
         try {
-            log.info("Collecting user segmentation analytics (Optimized v2)...");
+            log.info("Collecting user segmentation analytics (Optimized v3)...");
             AnalyticsMetrics metrics = AnalyticsMetrics.builder();
 
             collectUserSegmentationMetricsInternal(ratingsDf, metrics);
@@ -107,7 +104,7 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
      * Internal method to collect user segmentation metrics.
      */
     private void collectUserSegmentationMetricsInternal(Dataset<Row> ratingsDf, AnalyticsMetrics metrics) {
-        log.debug("Executing internal user segmentation metrics collection (Optimized v2)...");
+        log.debug("Executing internal user segmentation metrics collection (Optimized v3)...");
 
         Dataset<Row> relevantRatings = ratingsDf.select(
                 functions.col("userId"),
@@ -124,20 +121,11 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
                 );
 
         userBehavior.persist(StorageLevel.MEMORY_AND_DISK_SER());
-        long totalUsers = userBehavior.count(); // Action: Get total unique users
-        log.debug("Persisted userBehavior dataset. Total unique users: {}", totalUsers);
-        metrics.addMetric("totalUsers", totalUsers);
+        // Note: totalUsers will be derived more efficiently below, but counting userBehavior
+        // here helps to materialize it and log its size if needed for debugging.
+        long initialUserBehaviorCount = userBehavior.count();
+        log.debug("Persisted userBehavior dataset. Initial count of unique users: {}", initialUserBehaviorCount);
 
-        if (totalUsers == 0) {
-            log.warn("No user behavior data to segment. Skipping further segmentation metrics.");
-            // Add default/zero values for remaining metrics if necessary
-            metrics.addMetric("highActivityUsers", 0L)
-                    .addMetric("mediumActivityUsers", 0L)
-                    // ... and so on for all metrics that depend on totalUsers > 0
-                    .addMetric("segmentationEffectivenessScore", 0.0);
-            userBehavior.unpersist();
-            return;
-        }
 
         Dataset<Row> userSegments = userBehavior
                 .withColumn("activityLevel",
@@ -149,14 +137,14 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
                                 .when(functions.col("avgRating").gt(2.5), "Neutral")
                                 .otherwise("Critical"));
 
-        // Persist userSegments as it's used for multiple counts and derivations
         userSegments.persist(StorageLevel.MEMORY_AND_DISK_SER());
         log.debug("Persisted userSegments dataset. First few rows:");
         userSegments.show(5, false);
 
 
-        // --- OPTIMIZATION: Combine multiple counts into fewer actions ---
-        Row activityAndPatternCounts = userSegments.agg(
+        // --- OPTIMIZATION V3: Combine totalUsers count with other segment counts ---
+        Row combinedCounts = userSegments.agg(
+                functions.count("*").as("totalUsers"), // Total users from userSegments
                 functions.sum(functions.when(functions.col("activityLevel").equalTo("High"), 1).otherwise(0)).as("highActivityUsers"),
                 functions.sum(functions.when(functions.col("activityLevel").equalTo("Medium"), 1).otherwise(0)).as("mediumActivityUsers"),
                 functions.sum(functions.when(functions.col("activityLevel").equalTo("Low"), 1).otherwise(0)).as("lowActivityUsers"),
@@ -165,33 +153,52 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
                 functions.sum(functions.when(functions.col("ratingPattern").equalTo("Critical"), 1).otherwise(0)).as("criticalUsers")
         ).first();
 
+        long totalUsers = 0L;
         long highActivityUsers = 0L, mediumActivityUsers = 0L, lowActivityUsers = 0L;
         long positiveUsers = 0L, neutralUsers = 0L, criticalUsers = 0L;
 
-        if (activityAndPatternCounts != null) {
-            highActivityUsers = getLongFromRow(activityAndPatternCounts, "highActivityUsers", 0L);
-            mediumActivityUsers = getLongFromRow(activityAndPatternCounts, "mediumActivityUsers", 0L);
-            lowActivityUsers = getLongFromRow(activityAndPatternCounts, "lowActivityUsers", 0L);
-            positiveUsers = getLongFromRow(activityAndPatternCounts, "positiveUsers", 0L);
-            neutralUsers = getLongFromRow(activityAndPatternCounts, "neutralUsers", 0L);
-            criticalUsers = getLongFromRow(activityAndPatternCounts, "criticalUsers", 0L);
+        if (combinedCounts != null) {
+            totalUsers = getLongFromRow(combinedCounts, "totalUsers", 0L);
+            highActivityUsers = getLongFromRow(combinedCounts, "highActivityUsers", 0L);
+            mediumActivityUsers = getLongFromRow(combinedCounts, "mediumActivityUsers", 0L);
+            lowActivityUsers = getLongFromRow(combinedCounts, "lowActivityUsers", 0L);
+            positiveUsers = getLongFromRow(combinedCounts, "positiveUsers", 0L);
+            neutralUsers = getLongFromRow(combinedCounts, "neutralUsers", 0L);
+            criticalUsers = getLongFromRow(combinedCounts, "criticalUsers", 0L);
         }
 
-        metrics.addMetric("highActivityUsers", highActivityUsers)
-                .addMetric("mediumActivityUsers", mediumActivityUsers)
-                .addMetric("lowActivityUsers", lowActivityUsers)
-                .addMetric("highActivityPercentage", (double) highActivityUsers / totalUsers * 100.0)
-                .addMetric("mediumActivityPercentage", (double) mediumActivityUsers / totalUsers * 100.0)
-                .addMetric("lowActivityPercentage", (double) lowActivityUsers / totalUsers * 100.0);
+        metrics.addMetric("totalUsers", totalUsers);
 
-        metrics.addMetric("positiveUsers", positiveUsers)
-                .addMetric("neutralUsers", neutralUsers)
-                .addMetric("criticalUsers", criticalUsers)
-                .addMetric("positiveUsersPercentage", (double) positiveUsers / totalUsers * 100.0)
-                .addMetric("neutralUsersPercentage", (double) neutralUsers / totalUsers * 100.0)
-                .addMetric("criticalUsersPercentage", (double) criticalUsers / totalUsers * 100.0);
+        if (totalUsers > 0) {
+            metrics.addMetric("highActivityUsers", highActivityUsers)
+                    .addMetric("mediumActivityUsers", mediumActivityUsers)
+                    .addMetric("lowActivityUsers", lowActivityUsers)
+                    .addMetric("highActivityPercentage", (double) highActivityUsers / totalUsers * 100.0)
+                    .addMetric("mediumActivityPercentage", (double) mediumActivityUsers / totalUsers * 100.0)
+                    .addMetric("lowActivityPercentage", (double) lowActivityUsers / totalUsers * 100.0);
 
-        // This part is already efficient (groupBy on small cardinality, then collect)
+            metrics.addMetric("positiveUsers", positiveUsers)
+                    .addMetric("neutralUsers", neutralUsers)
+                    .addMetric("criticalUsers", criticalUsers)
+                    .addMetric("positiveUsersPercentage", (double) positiveUsers / totalUsers * 100.0)
+                    .addMetric("neutralUsersPercentage", (double) neutralUsers / totalUsers * 100.0)
+                    .addMetric("criticalUsersPercentage", (double) criticalUsers / totalUsers * 100.0);
+        } else {
+            // Add default zero values if totalUsers is 0
+            metrics.addMetric("highActivityUsers", 0L)
+                    .addMetric("mediumActivityUsers", 0L)
+                    .addMetric("lowActivityUsers", 0L)
+                    .addMetric("highActivityPercentage", 0.0)
+                    .addMetric("mediumActivityPercentage", 0.0)
+                    .addMetric("lowActivityPercentage", 0.0);
+            metrics.addMetric("positiveUsers", 0L)
+                    .addMetric("neutralUsers", 0L)
+                    .addMetric("criticalUsers", 0L)
+                    .addMetric("positiveUsersPercentage", 0.0)
+                    .addMetric("neutralUsersPercentage", 0.0)
+                    .addMetric("criticalUsersPercentage", 0.0);
+        }
+
         Dataset<Row> segmentCounts = userSegments // Reuses persisted userSegments
                 .groupBy("activityLevel", "ratingPattern")
                 .count()
@@ -206,7 +213,7 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
             metrics.addMetric(segmentKey, count);
         }
 
-        Dataset<Row> advancedSegments = userBehavior // Reuses persisted userBehavior (from initial persist)
+        Dataset<Row> advancedSegments = userBehavior // Reuses persisted userBehavior
                 .withColumn("engagementLevel",
                         functions.when(functions.col("uniqueMovies").gt(functions.col("totalRatings").multiply(0.8)), "Explorer")
                                 .when(functions.col("uniqueMovies").gt(functions.col("totalRatings").multiply(0.5)), "Selective")
@@ -244,22 +251,31 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
                     .addMetric("avgUniqueMoviesAcrossUsers", getDoubleFromRow(segmentQuality, "avgUniqueMoviesAcrossUsers", 0.0))
                     .addMetricWithDefault("activityVariation", segmentQuality.get(segmentQuality.fieldIndex("activityVariation")), 0.0)
                     .addMetricWithDefault("ratingVariation", segmentQuality.get(segmentQuality.fieldIndex("ratingVariation")), 0.0);
+        } else {
+            metrics.addMetric("avgRatingsAcrossUsers", 0.0)
+                    .addMetric("avgRatingAcrossUsers", 0.0)
+                    .addMetric("avgUniqueMoviesAcrossUsers", 0.0)
+                    .addMetric("activityVariation", 0.0)
+                    .addMetric("ratingVariation", 0.0);
         }
 
         double segmentationScore = 100.0;
-        // totalUsers, highActivityUsers, etc. are already calculated and available as Java variables
-        double maxSegmentPercentage = Math.max(Math.max(
-                        (double) highActivityUsers / totalUsers,
-                        (double) mediumActivityUsers / totalUsers),
-                (double) lowActivityUsers / totalUsers) * 100.0;
+        if (totalUsers > 0) { // Use the efficiently calculated totalUsers
+            double maxSegmentPercentage = Math.max(Math.max(
+                            (double) highActivityUsers / totalUsers, // Use Java variables
+                            (double) mediumActivityUsers / totalUsers),
+                    (double) lowActivityUsers / totalUsers) * 100.0;
 
-        if (maxSegmentPercentage > 80) segmentationScore -= 30;
-        else if (maxSegmentPercentage > 70) segmentationScore -= 20;
-        else if (maxSegmentPercentage > 60) segmentationScore -= 10;
-        metrics.addMetric("maxSegmentPercentage", maxSegmentPercentage);
+            if (maxSegmentPercentage > 80) segmentationScore -= 30;
+            else if (maxSegmentPercentage > 70) segmentationScore -= 20;
+            else if (maxSegmentPercentage > 60) segmentationScore -= 10;
+            metrics.addMetric("maxSegmentPercentage", maxSegmentPercentage);
+        } else {
+            metrics.addMetric("maxSegmentPercentage", 0.0);
+        }
         metrics.addMetric("segmentationEffectivenessScore", segmentationScore);
 
-        userSegments.unpersist(); // Unpersist userSegments
+        userSegments.unpersist();
         userBehavior.unpersist();
         log.debug("Unpersisted userBehavior and userSegments datasets.");
     }
@@ -274,7 +290,7 @@ public class UserSegmentationAnalyticsService implements AnalyticsCollector {
         if (ratingsDf == null || ratingsDf.isEmpty()) return false;
         List<String> requiredColumns = java.util.Arrays.asList("userId", "movieId", "ratingActual");
         List<String> actualColumns = java.util.Arrays.asList(ratingsDf.columns());
-        return actualColumns.containsAll(requiredColumns);
+        return new HashSet<>(actualColumns).containsAll(requiredColumns);
     }
 
     @Override

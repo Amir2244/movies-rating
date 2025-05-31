@@ -48,7 +48,7 @@ services:
     container_name: spark-worker
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_CORES=6
       - SPARK_WORKER_MEMORY=6g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
     mem_limit: 7g
@@ -66,7 +66,7 @@ services:
     container_name: spark-worker-2
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_CORES=6
       - SPARK_WORKER_MEMORY=6g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
     mem_limit: 7g
