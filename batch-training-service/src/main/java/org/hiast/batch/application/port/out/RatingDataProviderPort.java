@@ -44,7 +44,7 @@ public interface RatingDataProviderPort {
      * @param spark The active SparkSession.
      * @return A Spark Dataset of Rows representing the raw links data.
      */
-    Dataset<Row> loadRawLinks(SparkSession spark);
+   // Dataset<Row> loadRawLinks(SparkSession spark);
 
     /**
      * Preprocesses the raw ratings Dataset into a Dataset of ProcessedRating.

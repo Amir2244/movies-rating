@@ -9,10 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Filter that loads additional MovieLens data files (movies, tags, links) from HDFS.
- * This filter runs after the main ratings data is loaded and provides additional
- * metadata for comprehensive analytics.
- * Works with both ALSTrainingPipelineContext and AnalyticsPipelineContext via BasePipelineContext.
+ * Filter that loads MovieLens metadata for analytics purposes.
+ * Note: This filter is now primarily used in the analytics pipeline.
+ * The training pipeline uses StreamingMovieMetaDataEnrichmentFilter which loads
+ * movie data on-demand during the enrichment phase.
  */
 public class MovieDataLoadingFilter<T extends BasePipelineContext> implements Filter<T, T> {
     private static final Logger log = LoggerFactory.getLogger(MovieDataLoadingFilter.class);
@@ -25,49 +25,56 @@ public class MovieDataLoadingFilter<T extends BasePipelineContext> implements Fi
     
     @Override
     public T process(T context) {
-        log.info("Loading additional MovieLens data files...");
+        log.info("Loading movie metadata for analytics...");
         
         try {
-            // Load movies metadata
+            // Load movie data
             log.info("Loading movies metadata...");
             Dataset<Row> rawMovies = ratingDataProvider.loadRawMovies(context.getSpark());
-            context.setRawMovies(rawMovies);
             
             if (rawMovies != null && !rawMovies.isEmpty()) {
-                long movieCount = rawMovies.count();
-                log.info("Successfully loaded {} movies with metadata", movieCount);
+                // Select only essential columns and cache
+                Dataset<Row> essentialMovies = rawMovies
+                    .select("movieId", "title", "genres")
+                    .cache();
+                
+                long movieCount = essentialMovies.count();
+                log.info("Loaded {} movies with metadata", movieCount);
+                
+                context.setRawMovies(essentialMovies);
             } else {
                 log.warn("Movies data is empty or null - genre analytics will be limited");
+                context.setRawMovies(context.getSpark().emptyDataFrame());
             }
             
-            // Load tags data
-            log.info("Loading tags data...");
-            Dataset<Row> rawTags = ratingDataProvider.loadRawTags(context.getSpark());
-            context.setRawTags(rawTags);
-            
-            if (rawTags != null && !rawTags.isEmpty()) {
-                long tagCount = rawTags.count();
-                log.info("Successfully loaded {} tag records", tagCount);
+            // Load tags only if needed for analytics
+            if (shouldLoadTags(context)) {
+                log.info("Loading tags data...");
+                Dataset<Row> rawTags = ratingDataProvider.loadRawTags(context.getSpark());
+                
+                if (rawTags != null && !rawTags.isEmpty()) {
+                    // Only keep essential tag columns
+                    Dataset<Row> essentialTags = rawTags
+                        .select("movieId", "tag")
+                        .cache();
+                    
+                    context.setRawTags(essentialTags);
+                    log.info("Successfully loaded {} tag records", essentialTags.count());
+                } else {
+                    context.setRawTags(context.getSpark().emptyDataFrame());
+                }
             } else {
-                log.warn("Tags data is empty or null - tag-based analytics will be unavailable");
+                log.info("Skipping tags loading - not required for current pipeline");
+                context.setRawTags(context.getSpark().emptyDataFrame());
             }
             
-            // Load links data
-            log.info("Loading links data...");
-            Dataset<Row> rawLinks = ratingDataProvider.loadRawLinks(context.getSpark());
-            context.setRawLinks(rawLinks);
+            // Skip links data unless explicitly needed
+            context.setRawLinks(context.getSpark().emptyDataFrame());
             
-            if (rawLinks != null && !rawLinks.isEmpty()) {
-                long linkCount = rawLinks.count();
-                log.info("Successfully loaded {} link records", linkCount);
-            } else {
-                log.warn("Links data is empty or null - external ID linking will be unavailable");
-            }
-            
-            log.info("Additional MovieLens data loading completed successfully");
+            log.info("Movie metadata loading completed");
             
         } catch (Exception e) {
-            log.error("Error loading additional MovieLens data: {}", e.getMessage(), e);
+            log.error("Error loading movie metadata: {}", e.getMessage(), e);
             // Don't fail the pipeline - set empty datasets and continue
             if (context.getRawMovies() == null) {
                 context.setRawMovies(context.getSpark().emptyDataFrame());
@@ -78,10 +85,15 @@ public class MovieDataLoadingFilter<T extends BasePipelineContext> implements Fi
             if (context.getRawLinks() == null) {
                 context.setRawLinks(context.getSpark().emptyDataFrame());
             }
-            log.warn("Continuing pipeline with empty additional datasets due to loading errors");
         }
 
         context.setMovieDataLoaded(true);
         return context;
+    }
+    
+    private boolean shouldLoadTags(T context) {
+        // Load tags only for analytics pipeline
+        String className = context.getClass().getSimpleName();
+        return className.contains("Analytics");
     }
 }

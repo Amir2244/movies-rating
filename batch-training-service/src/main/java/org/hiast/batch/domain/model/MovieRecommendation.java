@@ -16,7 +16,7 @@ public class MovieRecommendation implements Serializable {
     private final int movieId;
     private final float rating;
     private final Instant generatedAt;
-    private final MovieMetaData metaData;  // Remove = null assignment
+    private final MovieMetaData metaData;
 
     /**
      * Constructor for MovieRecommendation without movie metadata.

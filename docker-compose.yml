@@ -35,7 +35,7 @@ services:
     ports:
       - "8080:8080"
       - "7077:7077"
-    mem_limit: 4g
+    mem_limit: 6g
     volumes:
       - ./batch-training-service/target/batch-training-service.jar:/opt/spark-apps/batch-training-service.jar
       - ./docker-volumes/spark_master_app_logs:/opt/spark-apps/logs

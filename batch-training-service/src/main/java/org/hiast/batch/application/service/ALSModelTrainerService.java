@@ -35,7 +35,6 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
                                   RatingDataProviderPort ratingDataProvider,
                                   FactorCachingPort factorPersistence,
                                   ResultPersistencePort resultPersistence,
-                                  AnalyticsPersistencePort analyticsPersistence,
                                   ALSConfig alsConfig,
                                   HDFSConfig hdfsConfig) {
         this.spark = spark;
@@ -61,15 +60,13 @@ public class ALSModelTrainerService implements TrainingModelUseCase {
 
                 // Add filters to the pipeline (analytics removed - now runs as separate job)
                 pipeline.addFilter(new DataLoadingFilter<>(ratingDataProvider))
-                        .addFilter(new MovieDataLoadingFilter<>(ratingDataProvider))
-                       .addFilter(new DataPreprocessingFilter<>(ratingDataProvider))
-                       // .addFilter(new DataAnalyticsFilter(analyticsPersistence)) // REMOVED - separate job
+                        .addFilter(new DataPreprocessingFilter<>(ratingDataProvider))
                        .addFilter(new DataSplittingFilter(alsConfig))
                        .addFilter(new ModelTrainingFilter(alsConfig))
                        .addFilter(new ModelEvaluationFilter())
                        .addFilter(new FactorPersistenceFilter(factorPersistence))
                        .addFilter(new ModelSavingFilter(hdfsConfig))
-                       .addFilter(new MovieMetaDataEnrichmentFilter(resultPersistence));
+                       .addFilter(new StreamingMovieMetaDataEnrichmentFilter(resultPersistence, ratingDataProvider));
 
                 // Execute the pipeline
                 ALSTrainingPipelineContext result = pipeline.execute(context);

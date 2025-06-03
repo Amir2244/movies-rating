@@ -113,37 +113,10 @@ public class SparkConfig {
      * @param conf The SparkConf to modify
      */
     private void applyStandaloneClusterSettings(SparkConf conf) {
-        // Memory settings
-        // These will be primarily driven by batch_config.properties
-        // if (!conf.contains("spark.driver.memory")) {
-        //     conf.set("spark.driver.memory", "4g");
-        // }
-        // if (!conf.contains("spark.executor.memory")) {
-        //     conf.set("spark.executor.memory", "4g"); // Adjusted for off-heap memory
-        // }
-        // if (!conf.contains("spark.executor.cores")) {
-        //     conf.set("spark.executor.cores", "4");
-        // }
-
         // Deployment mode
         if (!conf.contains("spark.submit.deployMode")) {
-            conf.set("spark.submit.deployMode", "client"); // This can remain as a fallback
+            conf.set("spark.submit.deployMode", "client");
         }
-
-        // Dynamic allocation settings
-        // These will be primarily driven by batch_config.properties
-        // if (!conf.contains("spark.dynamicAllocation.enabled")) {
-        //     conf.set("spark.dynamicAllocation.enabled", "true");
-        // }
-        // if (!conf.contains("spark.dynamicAllocation.minExecutors")) {
-        //     conf.set("spark.dynamicAllocation.minExecutors", "1");
-        // }
-        // if (!conf.contains("spark.dynamicAllocation.maxExecutors")) {
-        //     conf.set("spark.dynamicAllocation.maxExecutors", "4");
-        // }
-        // if (!conf.contains("spark.dynamicAllocation.initialExecutors")) {
-        //     conf.set("spark.dynamicAllocation.initialExecutors", "2");
-        // }
     }
 
     /**
@@ -193,13 +166,7 @@ public class SparkConfig {
      * @param conf The SparkConf to modify
      */
     private void applyCommonSettings(SparkConf conf) {
-        // Memory management - These will be primarily driven by batch_config.properties
-        // if (!conf.contains("spark.memory.fraction")) {
-        //     conf.set("spark.memory.fraction", "0.6");
-        // }
-        // if (!conf.contains("spark.memory.storageFraction")) {
-        //     conf.set("spark.memory.storageFraction", "0.5");
-        // }
+
 
         // Off-heap memory configuration (keep here if not in properties file)
         if (!conf.contains("spark.memory.offHeap.enabled")) {
@@ -219,43 +186,32 @@ public class SparkConfig {
         if (!conf.contains("spark.kryo.registrator")) {
             conf.set("spark.kryo.registrator", "org.hiast.batch.util.CustomKryoRegistrator");
         }
+        
+        // Additional Kryo settings for better serialization
+        if (!conf.contains("spark.kryo.unsafe")) {
+            conf.set("spark.kryo.unsafe", "false");
+        }
+        if (!conf.contains("spark.kryoserializer.buffer.max")) {
+            conf.set("spark.kryoserializer.buffer.max", "1024m");
+        }
+        if (!conf.contains("spark.kryoserializer.buffer")) {
+            conf.set("spark.kryoserializer.buffer", "64k");
+        }
+        
+        // Settings to handle stack overflow issues
+        if (!conf.contains("spark.driver.extraJavaOptions")) {
+            String existingOpts = conf.get("spark.driver.extraJavaOptions", "");
+            conf.set("spark.driver.extraJavaOptions", existingOpts + " -Xss4m");
+        }
+        if (!conf.contains("spark.executor.extraJavaOptions")) {
+            String existingOpts = conf.get("spark.executor.extraJavaOptions", "");
+            conf.set("spark.executor.extraJavaOptions", existingOpts + " -Xss4m");
+        }
 
-        // Shuffle settings - These will be primarily driven by batch_config.properties
-        // if (!conf.contains("spark.shuffle.file.buffer")) {
-        //     conf.set("spark.shuffle.file.buffer", "64k");
-        // }
-        // if (!conf.contains("spark.shuffle.spill.compress")) {
-        //     conf.set("spark.shuffle.spill.compress", "true");
-        // }
-        // if (!conf.contains("spark.shuffle.compress")) {
-        //     conf.set("spark.shuffle.compress", "true");
-        // }
-        // if (!conf.contains("spark.shuffle.io.maxRetries")) {
-        //     conf.set("spark.shuffle.io.maxRetries", "10");
-        // }
-        // if (!conf.contains("spark.shuffle.io.retryWait")) {
-        //     conf.set("spark.shuffle.io.retryWait", "30s");
-        // }
 
         // RDD compression (already in batch_config.properties, keep as fallback)
         if (!conf.contains("spark.rdd.compress")) {
             conf.set("spark.rdd.compress", "true");
         }
-
-        // Network timeout - These will be primarily driven by batch_config.properties
-        // if (!conf.contains("spark.network.timeout")) {
-        //     conf.set("spark.network.timeout", "1200s");
-        // }
-        // if (!conf.contains("spark.executor.heartbeatInterval")) {
-        //     conf.set("spark.executor.heartbeatInterval", "120s");
-        // }
-
-        // SQL settings - These will be primarily driven by batch_config.properties
-        // if (!conf.contains("spark.sql.shuffle.partitions")) {
-        //     conf.set("spark.sql.shuffle.partitions", "200");
-        // }
-        // if (!conf.contains("spark.default.parallelism")) {
-        //     conf.set("spark.default.parallelism", "200");
-        // }
     }
 }

@@ -28,8 +28,6 @@ public class VectorMetadataTest {
         assertEquals(VectorSerializationUtil.USER_ENTITY_TYPE, metadata.getEntityType());
         assertEquals(dimension, metadata.getDimension());
         assertEquals(modelVersion, metadata.getModelVersion());
-        assertTrue(metadata.isUserVector());
-        assertFalse(metadata.isItemVector());
         assertNotNull(metadata.getTimestamp());
     }
     
@@ -48,8 +46,6 @@ public class VectorMetadataTest {
         assertEquals(VectorSerializationUtil.ITEM_ENTITY_TYPE, metadata.getEntityType());
         assertEquals(dimension, metadata.getDimension());
         assertEquals(modelVersion, metadata.getModelVersion());
-        assertFalse(metadata.isUserVector());
-        assertTrue(metadata.isItemVector());
         assertNotNull(metadata.getTimestamp());
     }
     

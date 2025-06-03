@@ -108,24 +108,6 @@ public class VectorMetadata {
         return modelVersion;
     }
     
-    /**
-     * Checks if this is a user vector.
-     * 
-     * @return true if it's a user vector
-     */
-    public boolean isUserVector() {
-        return VectorSerializationUtil.USER_ENTITY_TYPE.equals(entityType);
-    }
-    
-    /**
-     * Checks if this is an item vector.
-     * 
-     * @return true if it's an item vector
-     */
-    public boolean isItemVector() {
-        return VectorSerializationUtil.ITEM_ENTITY_TYPE.equals(entityType);
-    }
-    
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

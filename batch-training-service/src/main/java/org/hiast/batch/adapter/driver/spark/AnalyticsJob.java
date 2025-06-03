@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Dedicated Analytics Job that runs independently from model training.
+ * Dedicated Analytics Job that runs independently of model training.
  * This job focuses solely on data analytics collection and persistence.
  * Follows the same architectural patterns as BatchTrainingJob.
  */

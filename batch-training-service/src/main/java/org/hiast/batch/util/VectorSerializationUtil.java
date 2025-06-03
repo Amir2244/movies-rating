@@ -35,7 +35,6 @@ public final class VectorSerializationUtil {
     public static final String ITEM_ENTITY_TYPE = "item";
     
     private VectorSerializationUtil() {
-        // Utility class - prevent instantiation
     }
     
     /**
@@ -79,49 +78,6 @@ public final class VectorSerializationUtil {
     }
     
     /**
-     * Deserializes a byte array back to a float array.
-     * 
-     * @param bytes The byte array to deserialize
-     * @return The deserialized float array
-     * @throws VectorSerializationException if deserialization fails
-     */
-    public static float[] deserializeVector(byte[] bytes) {
-        if (bytes == null) {
-            throw new VectorSerializationException("Byte array cannot be null");
-        }
-        
-        if (bytes.length == 0) {
-            throw new VectorSerializationException("Byte array cannot be empty");
-        }
-        
-        if (bytes.length % FLOAT_SIZE_BYTES != 0) {
-            throw new VectorSerializationException(
-                "Invalid byte array length: " + bytes.length + 
-                ". Must be divisible by " + FLOAT_SIZE_BYTES);
-        }
-        
-        try {
-            ByteBuffer buffer = ByteBuffer.wrap(bytes);
-            buffer.order(BYTE_ORDER);
-            
-            int dimension = bytes.length / FLOAT_SIZE_BYTES;
-            float[] vector = new float[dimension];
-            
-            for (int i = 0; i < dimension; i++) {
-                vector[i] = buffer.getFloat();
-            }
-            
-            log.debug("Deserialized {} bytes to vector of dimension {}", 
-                     bytes.length, dimension);
-            return vector;
-            
-        } catch (Exception e) {
-            throw new VectorSerializationException(
-                "Failed to deserialize byte array of length " + bytes.length, e);
-        }
-    }
-    
-    /**
      * Validates that a vector is suitable for Redis vector storage.
      * 
      * @param vector The vector to validate
@@ -146,29 +102,6 @@ public final class VectorSerializationUtil {
     }
     
     /**
-     * Calculates the byte size required to store a vector of given dimension.
-     * 
-     * @param dimension The vector dimension
-     * @return The required byte size
-     */
-    public static int calculateByteSize(int dimension) {
-        return dimension * FLOAT_SIZE_BYTES;
-    }
-    
-    /**
-     * Calculates the dimension of a vector from its byte representation.
-     * 
-     * @param bytes The byte array
-     * @return The vector dimension
-     */
-    public static int calculateDimension(byte[] bytes) {
-        if (bytes == null) {
-            return 0;
-        }
-        return bytes.length / FLOAT_SIZE_BYTES;
-    }
-    
-    /**
      * Creates a Redis key for storing user factors with vector database compatibility.
      * 
      * @param userId The user ID
@@ -186,48 +119,5 @@ public final class VectorSerializationUtil {
      */
     public static String createItemFactorKey(int itemId) {
         return "vector:item:" + itemId;
-    }
-    
-    /**
-     * Extracts entity ID from a vector key.
-     * 
-     * @param key The Redis key
-     * @return The entity ID, or -1 if extraction fails
-     */
-    public static int extractEntityId(String key) {
-        if (key == null || key.isEmpty()) {
-            return -1;
-        }
-        
-        try {
-            String[] parts = key.split(":");
-            if (parts.length >= 3) {
-                return Integer.parseInt(parts[2]);
-            }
-        } catch (NumberFormatException e) {
-            log.warn("Failed to extract entity ID from key: {}", key);
-        }
-        
-        return -1;
-    }
-    
-    /**
-     * Determines if a key represents a user vector.
-     * 
-     * @param key The Redis key
-     * @return true if it's a user vector key
-     */
-    public static boolean isUserVectorKey(String key) {
-        return key != null && key.startsWith("vector:user:");
-    }
-    
-    /**
-     * Determines if a key represents an item vector.
-     * 
-     * @param key The Redis key
-     * @return true if it's an item vector key
-     */
-    public static boolean isItemVectorKey(String key) {
-        return key != null && key.startsWith("vector:item:");
     }
 }

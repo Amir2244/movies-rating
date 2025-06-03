@@ -10,26 +10,26 @@ import org.hiast.batch.domain.exception.ModelPersistenceException;
 import org.hiast.batch.domain.model.MovieMetaData;
 import org.hiast.batch.domain.model.MovieRecommendation;
 import org.hiast.batch.domain.model.UserRecommendations;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.apache.spark.sql.functions.*;
 
 /**
  * Streaming enrichment filter that generates and processes recommendations
  * in small batches to avoid memory issues.
- * 
+ * <p>
  * Instead of generating all recommendations at once, we:
  * 1. Get all user IDs
  * 2. Process them in batches (e.g., 5000 users at a time)
  * 3. For each batch: generate recommendations, enrich, and save
- * 4. Move to next batch
- * 
+ * 4. Move to the next batch
+ * <p>
  * This ensures we never have more than BATCH_SIZE users' recommendations in memory.
  */
 public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext>, Serializable {
@@ -130,13 +130,12 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
                 processBatch(batchRecommendations, movieMetadata, now, modelVersion);
                 
                 processedCount += batchRows.size();
-                log.info("Processed {}/{} users ({:.1f}%)", 
+                log.info("Processed {}/{} users ({{}:.1f}%)",
                     processedCount, totalUsers, 
                     (processedCount * 100.0) / totalUsers);
                 
             } catch (Exception e) {
                 log.error("Error processing batch {}-{}: {}", i, endIdx, e.getMessage());
-                e.printStackTrace(); // Add stack trace for debugging
                 failedBatches++;
             }
         }
@@ -159,21 +158,21 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
                             String modelVersion) {
         
         try {
+            List<UserRecommendations> recommendations;
             if (!ENABLE_ENRICHMENT || movieMetadata == null) {
                 // Collect and save without enrichment
-                List<UserRecommendations> recommendations = collectWithoutEnrichment(
-                    batchRecommendations, now, modelVersion);
+                recommendations = collectWithoutEnrichment(
+                        batchRecommendations, now, modelVersion);
                 
-                // Save outside of Spark operation
-                saveInBatches(recommendations);
+                // Save outside Spark operation
             } else {
                 // Collect and save with enrichment
-                List<UserRecommendations> recommendations = collectWithEnrichment(
-                    batchRecommendations, movieMetadata, now, modelVersion);
+                recommendations = collectWithEnrichment(
+                        batchRecommendations, movieMetadata, now, modelVersion);
                 
-                // Save outside of Spark operation
-                saveInBatches(recommendations);
+                // Save outside Spark operation
             }
+            saveInBatches(recommendations);
         } catch (Exception e) {
             log.error("Error in processBatch: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to process batch", e);
@@ -286,12 +285,16 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
      * Save recommendations in batches
      */
     private void saveInBatches(List<UserRecommendations> recommendations) {
-        int batchSize = 100;
-        
+        int batchSize = 1000;
+
+        batchIterating(recommendations, batchSize, resultPersistence, log);
+    }
+
+    static void batchIterating(List<UserRecommendations> recommendations, int batchSize, ResultPersistencePort resultPersistence, Logger log) {
         for (int i = 0; i < recommendations.size(); i += batchSize) {
             int end = Math.min(i + batchSize, recommendations.size());
             List<UserRecommendations> batch = recommendations.subList(i, end);
-            
+
             try {
                 resultPersistence.saveUserRecommendations(batch);
             } catch (Exception e) {
@@ -299,38 +302,43 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
             }
         }
     }
-    
+
     /**
      * Load movie metadata with optimization
      */
     private Dataset<Row> loadMovieMetadata(SparkSession spark) {
-        log.info("Loading movie metadata for enrichment...");
+        return getRowDataset(spark, ratingDataProvider);
+    }
+
+    @Nullable
+    static Dataset<Row> getRowDataset(SparkSession spark, RatingDataProviderPort ratingDataProvider) {
+        StreamingMovieMetaDataEnrichmentFilter.log.info("Loading movie metadata for enrichment...");
         try {
             Dataset<Row> rawMovies = ratingDataProvider.loadRawMovies(spark);
             if (rawMovies == null || rawMovies.isEmpty()) {
-                log.warn("No movie metadata available");
+                StreamingMovieMetaDataEnrichmentFilter.log.warn("No movie metadata available");
                 return null;
             }
-            
+
             // Only load essential columns
             Dataset<Row> movies = rawMovies
                 .selectExpr(
                     "CAST(movieId AS INT) AS movieId",
-                    "CAST(title AS STRING) AS title", 
+                    "CAST(title AS STRING) AS title",
                     "CAST(genres AS STRING) AS genres"
                 );
-            
+
             long count = movies.count();
             if (count < 50000) {
-                log.info("Broadcasting {} movies for efficient lookups", count);
+                StreamingMovieMetaDataEnrichmentFilter.log.info("Broadcasting {} movies for efficient lookups", count);
                 return broadcast(movies).cache();
             } else {
-                log.info("Using regular dataset for {} movies", count);
+                StreamingMovieMetaDataEnrichmentFilter.log.info("Using regular dataset for {} movies", count);
                 return movies.cache();
             }
-            
+
         } catch (Exception e) {
-            log.error("Error loading movie metadata: {}", e.getMessage(), e);
+            StreamingMovieMetaDataEnrichmentFilter.log.error("Error loading movie metadata: {}", e.getMessage(), e);
             return null;
         }
     }
