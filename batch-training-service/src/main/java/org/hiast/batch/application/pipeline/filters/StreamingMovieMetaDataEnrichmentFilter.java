@@ -130,7 +130,7 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
                 processBatch(batchRecommendations, movieMetadata, now, modelVersion);
                 
                 processedCount += batchRows.size();
-                log.info("Processed {}/{} users ({{}:.1f}%)",
+                log.info("Processed {}/{} users ({}%)",
                     processedCount, totalUsers, 
                     (processedCount * 100.0) / totalUsers);
                 

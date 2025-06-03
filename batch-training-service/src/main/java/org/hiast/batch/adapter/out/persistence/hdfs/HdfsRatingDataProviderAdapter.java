@@ -37,15 +37,6 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
     private final String tagsInputHdfsPath;
    // private final String linksInputHdfsPath;
 
-    private static String bytesToHex(byte[] bytes) {
-        if (bytes == null) return "null";
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02X ", b & 0xFF));
-        }
-        return sb.toString();
-    }
-
     public HdfsRatingDataProviderAdapter(String ratingsInputHdfsPath) {
         this.ratingsInputHdfsPath = ratingsInputHdfsPath;
         // Derive other file paths from the rating path
@@ -97,104 +88,63 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
             }
         }
 
-        // Try to load as Parquet first
+        // Removed Parquet loading attempt block
+        // Directly attempt to load as CSV
+
         try {
-            log.info("Attempting to load as Parquet format...");
+            log.info("Attempting to load as CSV format...");
             long startTime = System.nanoTime();
+
+            // Define schema for better performance and data validation
+            StructType ratingsSchema = new StructType()
+                    .add("userId", DataTypes.StringType, true)
+                    .add("movieId", DataTypes.StringType, true)
+                    .add("rating", DataTypes.StringType, true)
+                    .add("timestamp", DataTypes.StringType, true);
 
             // Get the number of cores available
             int numCores = Runtime.getRuntime().availableProcessors();
             // Use 2x number of cores as a reasonable default for partitions
-            int numPartitions = Math.max(2 * numCores, 4);
+            int numPartitions = Math.max(2* numCores, 4);
             log.info("Setting number of partitions to {} based on {} available cores", numPartitions, numCores);
 
-            Dataset<Row> parquetData = spark.read()
-                    .format("parquet")
-                    .option("mergeSchema", "true")
-                    .load(ratingsInputHdfsPath)
+            Dataset<Row> csvData = spark.read()
+                    .option("header", "true")
+                    .option("encoding", StandardCharsets.UTF_8.name())
+                    .option("mode", "DROPMALFORMED")  // Drop malformed records
+                    .option("nullValue", "")  // Treat empty strings as nulls
+                    .schema(ratingsSchema)
+                    .csv(ratingsInputHdfsPath)
                     .repartition(numPartitions);
 
-            // Cache the data for better performance
-            parquetData.persist(StorageLevel.MEMORY_AND_DISK());
 
-            log.info("Successfully loaded data as Parquet. Schema:");
-            parquetData.printSchema();
-            log.info("Parquet data sample (first 5 rows, truncate=false):");
-            parquetData.show(5, false);
+            log.info("Raw data schema from HDFS (CSV attempt):");
+            csvData.printSchema();
+            log.info("Raw data sample from HDFS (CSV attempt) (showing up to 5 rows, truncate=false):");
+            csvData.show(5, false);
 
-            long parquetDataCount = parquetData.count();
+            long csvDataCount = csvData.count();
             long endTime = System.nanoTime();
-            log.info("Count of rows loaded from Parquet: {}. Loading took {} ms",
-                    parquetDataCount, TimeUnit.NANOSECONDS.toMillis(endTime - startTime));
+            log.info("Count of rows loaded from CSV: {}. Loading took {} ms",
+                    csvDataCount, TimeUnit.NANOSECONDS.toMillis(endTime - startTime));
 
-            if (parquetData.columns().length == 1 && "value".equals(parquetData.columns()[0]) &&
-                    parquetData.schema().fields()[0].dataType().equals(DataTypes.BinaryType)) {
-                log.warn("Loaded Parquet data has a single binary 'value' column. This will be handled in preprocessRatings.");
-            } else if (parquetDataCount == 0) {
-                log.warn("Loaded Parquet data but it contains 0 rows. Triggering CSV fallback.");
-                parquetData.unpersist();
-                throw new RuntimeException("Parquet file loaded but was empty. Triggering CSV fallback.");
+            if (csvDataCount == 0) {
+                log.warn("The CSV file {} appears to be empty or only contains a header.", ratingsInputHdfsPath);
+                // csvData.unpersist(); // Unpersisting here might be premature if an empty dataframe is valid in some contexts.
+                                     // Let the caller decide or handle it. If an exception is preferred:
+                throw new DataLoadingException("CSV file is empty or contains only header: " + ratingsInputHdfsPath);
             }
 
-            return parquetData;
-        } catch (Exception parquetException) {
-            log.warn("Failed to load raw ratings as Parquet from HDFS path: {}. Error: {}. Attempting CSV fallback.",
-                    ratingsInputHdfsPath, parquetException.getMessage());
-
-            // Try to load as CSV as fallback
-            try {
-                log.info("Attempting to load as CSV format...");
-                long startTime = System.nanoTime();
-
-                // Define schema for better performance and data validation
-                StructType ratingsSchema = new StructType()
-                        .add("userId", DataTypes.StringType, true)
-                        .add("movieId", DataTypes.StringType, true)
-                        .add("rating", DataTypes.StringType, true)
-                        .add("timestamp", DataTypes.StringType, true);
-
-                // Get the number of cores available
-                int numCores = Runtime.getRuntime().availableProcessors();
-                // Use 2x number of cores as a reasonable default for partitions
-                int numPartitions = Math.max(2* numCores, 4);
-                log.info("Setting number of partitions to {} based on {} available cores", numPartitions, numCores);
-
-                Dataset<Row> csvData = spark.read()
-                        .option("header", "true")
-                        .option("encoding", StandardCharsets.UTF_8.name())
-                        .option("mode", "DROPMALFORMED")  // Drop malformed records
-                        .option("nullValue", "")  // Treat empty strings as nulls
-                        .schema(ratingsSchema)
-                        .csv(ratingsInputHdfsPath)
-                        .repartition(numPartitions);
-
-
-                log.info("Raw data schema from HDFS (CSV attempt):");
-                csvData.printSchema();
-                log.info("Raw data sample from HDFS (CSV attempt) (showing up to 5 rows, truncate=false):");
-                csvData.show(5, false);
-
-                long csvDataCount = csvData.count();
-                long endTime = System.nanoTime();
-                log.info("Count of rows loaded from CSV: {}. Loading took {} ms",
-                        csvDataCount, TimeUnit.NANOSECONDS.toMillis(endTime - startTime));
-
-                if (csvDataCount == 0) {
-                    log.warn("The CSV file {} appears to be empty or only contains a header.", ratingsInputHdfsPath);
-                    csvData.unpersist();
-                    throw new DataLoadingException("CSV file is empty or contains only header: " + ratingsInputHdfsPath);
-                }
-
-                return csvData;
-            } catch (Exception csvException) {
-                if (!(csvException instanceof DataLoadingException)) {
-                    log.error("Failed to load data as CSV from HDFS path: {}. Error: {}",
-                            ratingsInputHdfsPath, csvException.getMessage(), csvException);
-                    throw new DataLoadingException("Failed to load data from HDFS path: " + ratingsInputHdfsPath, csvException);
-                } else {
-                    throw (DataLoadingException) csvException;
-                }
+            return csvData;
+        } catch (Exception csvException) {
+            // If it's already a DataLoadingException, rethrow it directly
+            if (csvException instanceof DataLoadingException) {
+                throw (DataLoadingException) csvException;
             }
+            // Otherwise, wrap it
+            log.error("Failed to load data as CSV from HDFS path: {}. Error: {}",
+                    ratingsInputHdfsPath, csvException.getMessage(), csvException);
+            throw new DataLoadingException("Failed to load data from HDFS path: " + ratingsInputHdfsPath, csvException);
         }
     }
 
@@ -208,8 +158,6 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
         log.info("Sample of rawRatingsDataset at entry (first 5 rows, truncate=false):");
         rawRatingsDataset.show(5, false);
 
-
-
         long initialRawCount = rawRatingsDataset.count();
         log.info("Count of rows in rawRatingsDataset at entry of preprocessRatings: {}", initialRawCount);
 
@@ -219,79 +167,70 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
         }
 
         try {
-            String[] columnNamesFromDataset = rawRatingsDataset.columns();
-            boolean isBinaryValueFormat = columnNamesFromDataset.length == 1 && "value".equals(columnNamesFromDataset[0]) && rawRatingsDataset.schema().fields()[0].dataType().equals(DataTypes.BinaryType);
+            // Removed binary format check, directly process as structured data
             Dataset<Row> processableData;
 
-            if (isBinaryValueFormat) {
-                log.info("Detected single binary 'value' column format. Attempting to parse binary data...");
-                throw new DataLoadingException("Parsing of single binary 'value' column Parquet files is not currently supported.");
-            } else {
-                log.info("Processing structured data. Expected columns: userId, movieId, rating, timestamp.");
-                final String userIdCol = "userId";
-                final String movieIdCol = "movieId";
-                final String ratingCol = "rating";
-                final String timestampCol = "timestamp";
-                List<String> expectedCols = Arrays.asList(userIdCol, movieIdCol, ratingCol, timestampCol);
+            log.info("Processing structured data. Expected columns: userId, movieId, rating, timestamp.");
+            final String userIdCol = "userId";
+            final String movieIdCol = "movieId";
+            final String ratingCol = "rating";
+            final String timestampCol = "timestamp";
+            List<String> expectedCols = Arrays.asList(userIdCol, movieIdCol, ratingCol, timestampCol);
 
-                StructType currentSchema = rawRatingsDataset.schema();
-                boolean allColumnsFound = true;
+            StructType currentSchema = rawRatingsDataset.schema();
+            boolean allColumnsFound = true;
 
-                log.info("--- Detailed Schema Field Analysis ---");
-                for (String expectedColName : expectedCols) {
-                    boolean foundThisCol = false;
-                    for (StructField actualField : currentSchema.fields()) {
-                        String actualFieldName = actualField.name();
-                        String actualFieldNameTrimmed = actualFieldName.trim();
-                        String expectedColNameTrimmed = expectedColName.trim();
+            log.info("--- Detailed Schema Field Analysis ---");
+            for (String expectedColName : expectedCols) {
+                boolean foundThisCol = false;
+                for (StructField actualField : currentSchema.fields()) {
+                    String actualFieldName = actualField.name();
+                    String actualFieldNameTrimmed = actualFieldName.trim(); // Trim whitespace
+                    String expectedColNameTrimmed = expectedColName.trim(); // Trim whitespace
 
-                        if (actualFieldNameTrimmed.equals(expectedColNameTrimmed)) {
-                            foundThisCol = true;
-                            log.info("Comparing expected '{}' with actual schema field '{}': Trimmed match! Original actual: '{}' (len {}), Original expected: '{}' (len {})",
-                                    expectedColName, actualFieldName, actualFieldName, actualFieldName.length(),
-                                    expectedColName, expectedColName.length());
-                            log.info("Byte comparison for '{}' and '{}': {}", expectedColName, actualFieldName,
-                                    Arrays.equals(expectedColName.getBytes(StandardCharsets.UTF_8),
-                                            actualFieldName.getBytes(StandardCharsets.UTF_8)));
-                            break;
-                        }
-                    }
-                    if (!foundThisCol) {
-                        log.warn("Expected column '{}' NOT found after iterating and trimming schema fields.", expectedColName);
-                        allColumnsFound = false;
+                    // Case-insensitive comparison for column names
+                    if (actualFieldNameTrimmed.equalsIgnoreCase(expectedColNameTrimmed)) {
+                        foundThisCol = true;
+                        log.info("Comparing expected '{}' with actual schema field '{}': Trimmed, case-insensitive match! Original actual: '{}', Original expected: '{}'",
+                                expectedColName, actualFieldName, actualFieldName, expectedColName);
+                        break;
                     }
                 }
-                log.info("--- End Detailed Schema Field Analysis ---");
-
-
-                if (!allColumnsFound) {
-                    StringBuilder actualNamesForLog = new StringBuilder();
-                    List<String> actualFieldNamesList = Arrays.asList(currentSchema.fieldNames());
-                    for (int i = 0; i < actualFieldNamesList.size(); i++) {
-                        String name = actualFieldNamesList.get(i);
-                        actualNamesForLog.append("Field ").append(i).append(": '").append(name).append("' (len: ").append(name.length())
-                                .append(", bytes: ").append(bytesToHex(name.getBytes(StandardCharsets.UTF_8))).append(")");
-                        if (i < actualFieldNamesList.size() - 1) actualNamesForLog.append(", ");
-                    }
-                    log.error("CRITICAL: Not all expected columns found. Expected: {}. Actual schema fields: [{}]",
-                            expectedCols, actualNamesForLog);
-                    return spark.emptyDataset(Encoders.bean(ProcessedRating.class));
+                if (!foundThisCol) {
+                    log.warn("Expected column '{}' NOT found after iterating, trimming, and case-insensitive comparison of schema fields.", expectedColName);
+                    allColumnsFound = false;
                 }
-
-                log.info("All expected columns reported as found by detailed check. Proceeding with filter.");
-                processableData = rawRatingsDataset.filter((FilterFunction<Row>) row -> {
-                    try {
-                        return !row.isNullAt(row.fieldIndex(userIdCol)) &&
-                                !row.isNullAt(row.fieldIndex(movieIdCol)) &&
-                                !row.isNullAt(row.fieldIndex(ratingCol)) &&
-                                !row.isNullAt(row.fieldIndex(timestampCol));
-                    } catch (IllegalArgumentException e) {
-                        log.warn("Column name not found during null check filtering for row: {}, error: {}. This row will be filtered out.",
-                                row, e.getMessage());
-                        return false;
-                    }
-                });
             }
+            log.info("--- End Detailed Schema Field Analysis ---");
+
+
+            if (!allColumnsFound) {
+                StringBuilder actualNamesForLog = new StringBuilder();
+                List<String> actualFieldNamesList = Arrays.asList(currentSchema.fieldNames());
+                for (int i = 0; i < actualFieldNamesList.size(); i++) {
+                    String name = actualFieldNamesList.get(i);
+                    actualNamesForLog.append("Field ").append(i).append(": '").append(name).append("' (len: ").append(name.length())
+                            .append(")");
+                    if (i < actualFieldNamesList.size() - 1) actualNamesForLog.append(", ");
+                }
+                log.error("CRITICAL: Not all expected columns found. Expected: {}. Actual schema fields: [{}]",
+                        expectedCols, actualNamesForLog);
+                return spark.emptyDataset(Encoders.bean(ProcessedRating.class));
+            }
+
+            log.info("All expected columns reported as found by detailed check. Proceeding with filter.");
+            processableData = rawRatingsDataset.filter((FilterFunction<Row>) row -> {
+                try {
+                    return !row.isNullAt(row.fieldIndex(userIdCol)) &&
+                            !row.isNullAt(row.fieldIndex(movieIdCol)) &&
+                            !row.isNullAt(row.fieldIndex(ratingCol)) &&
+                            !row.isNullAt(row.fieldIndex(timestampCol));
+                } catch (IllegalArgumentException e) {
+                    log.warn("Column name not found during null check filtering for row: {}, error: {}. This row will be filtered out.",
+                            row, e.getMessage());
+                    return false;
+                }
+            });
 
             log.info("Processable data schema after initial handling and filtering:");
             processableData.printSchema();
