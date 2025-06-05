@@ -1,0 +1,108 @@
+package org.hiast.recommendationsapi.adapter.out.persistence.mongodb;
+
+import org.hiast.ids.UserId;
+import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.document.UserRecommendationsDocument;
+import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.mapper.RecommendationsDomainMapper;
+import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.repository.UserRecommendationsMongoRepository;
+import org.hiast.recommendationsapi.application.port.out.RecommendationsRepositoryPort;
+import org.hiast.recommendationsapi.domain.model.UserRecommendations;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Repository;
+
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * MongoDB adapter implementing the RecommendationsRepositoryPort.
+ * This is the secondary adapter in hexagonal architecture that handles
+ * data persistence concerns while keeping the domain logic clean.
+ */
+@Repository
+public class MongoRecommendationsRepositoryAdapter implements RecommendationsRepositoryPort {
+    
+    private static final Logger log = LoggerFactory.getLogger(MongoRecommendationsRepositoryAdapter.class);
+    
+    private final UserRecommendationsMongoRepository mongoRepository;
+    private final RecommendationsDomainMapper domainMapper;
+    
+    /**
+     * Constructor for dependency injection.
+     *
+     * @param mongoRepository The Spring Data MongoDB repository.
+     * @param domainMapper    The mapper for converting between documents and domain models.
+     */
+    public MongoRecommendationsRepositoryAdapter(UserRecommendationsMongoRepository mongoRepository,
+                                                RecommendationsDomainMapper domainMapper) {
+        this.mongoRepository = Objects.requireNonNull(mongoRepository, "mongoRepository cannot be null");
+        this.domainMapper = Objects.requireNonNull(domainMapper, "domainMapper cannot be null");
+    }
+    
+    @Override
+    public Optional<UserRecommendations> findByUserId(UserId userId) {
+        Objects.requireNonNull(userId, "userId cannot be null");
+        
+        log.debug("Searching for recommendations for user: {}", userId);
+        
+        try {
+            Optional<UserRecommendationsDocument> documentOpt = mongoRepository.findByUserId(userId.getUserId());
+            
+            if (documentOpt.isPresent()) {
+                UserRecommendations domain = domainMapper.toDomain(documentOpt.get());
+                log.debug("Found recommendations for user: {} with {} recommendations", 
+                    userId, domain.getRecommendations().size());
+                return Optional.of(domain);
+            } else {
+                log.debug("No recommendations found for user: {}", userId);
+                return Optional.empty();
+            }
+        } catch (Exception e) {
+            log.error("Error retrieving recommendations for user: {}", userId, e);
+            return Optional.empty();
+        }
+    }
+    
+    @Override
+    public Optional<UserRecommendations> findByUserIdWithLimit(UserId userId, int limit) {
+        Objects.requireNonNull(userId, "userId cannot be null");
+        
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive, but was: " + limit);
+        }
+        
+        log.debug("Searching for up to {} recommendations for user: {}", limit, userId);
+        
+        try {
+            Optional<UserRecommendationsDocument> documentOpt = mongoRepository.findByUserId(userId.getUserId());
+            
+            if (documentOpt.isPresent()) {
+                UserRecommendations domain = domainMapper.toDomainWithLimit(documentOpt.get(), limit);
+                log.debug("Found {} recommendations for user: {} (limit: {})", 
+                    domain.getRecommendations().size(), userId, limit);
+                return Optional.of(domain);
+            } else {
+                log.debug("No recommendations found for user: {}", userId);
+                return Optional.empty();
+            }
+        } catch (Exception e) {
+            log.error("Error retrieving recommendations for user: {} with limit: {}", userId, limit, e);
+            return Optional.empty();
+        }
+    }
+    
+    @Override
+    public boolean existsByUserId(UserId userId) {
+        Objects.requireNonNull(userId, "userId cannot be null");
+        
+        log.debug("Checking if recommendations exist for user: {}", userId);
+        
+        try {
+            boolean exists = mongoRepository.existsByUserId(userId.getUserId());
+            log.debug("Recommendations exist for user {}: {}", userId, exists);
+            return exists;
+        } catch (Exception e) {
+            log.error("Error checking if recommendations exist for user: {}", userId, e);
+            return false;
+        }
+    }
+}
