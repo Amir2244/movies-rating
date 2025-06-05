@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession;
 import org.hiast.batch.domain.model.ProcessedRating;
 
 /**
- * Output Port defining how to load and preprocess rating data.
+ * Output Port defining how to load and preprocess rating data and related MovieLens datasets.
  * Implementations (adapters) will handle specific data sources like HDFS/GCS.
  */
 public interface RatingDataProviderPort {
@@ -18,6 +18,33 @@ public interface RatingDataProviderPort {
      * @return A Spark Dataset of Rows representing the raw ratings.
      */
     Dataset<Row> loadRawRatings(SparkSession spark);
+
+    /**
+     * Loads raw movies metadata from the configured input source.
+     * Expected to contain movieId, title, genres columns.
+     *
+     * @param spark The active SparkSession.
+     * @return A Spark Dataset of Rows representing the raw movies metadata.
+     */
+    Dataset<Row> loadRawMovies(SparkSession spark);
+
+    /**
+     * Loads raw tags data from the configured input source.
+     * Expected to contain userId, movieId, tag, timestamp columns.
+     *
+     * @param spark The active SparkSession.
+     * @return A Spark Dataset of Rows representing the raw tags data.
+     */
+    Dataset<Row> loadRawTags(SparkSession spark);
+
+    /**
+     * Loads raw links data from the configured input source.
+     * Expected to contain movieId, imdbId, tmdbId columns.
+     *
+     * @param spark The active SparkSession.
+     * @return A Spark Dataset of Rows representing the raw links data.
+     */
+   // Dataset<Row> loadRawLinks(SparkSession spark);
 
     /**
      * Preprocesses the raw ratings Dataset into a Dataset of ProcessedRating.

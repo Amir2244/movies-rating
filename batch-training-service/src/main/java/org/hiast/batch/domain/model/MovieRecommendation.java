@@ -2,6 +2,7 @@ package org.hiast.batch.domain.model;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -15,9 +16,10 @@ public class MovieRecommendation implements Serializable {
     private final int movieId;
     private final float rating;
     private final Instant generatedAt;
+    private final MovieMetaData metaData;
 
     /**
-     * Constructor for MovieRecommendation.
+     * Constructor for MovieRecommendation without movie metadata.
      *
      * @param userId      The user ID.
      * @param movieId     The movie ID.
@@ -25,10 +27,25 @@ public class MovieRecommendation implements Serializable {
      * @param generatedAt The timestamp when the recommendation was generated.
      */
     public MovieRecommendation(int userId, int movieId, float rating, Instant generatedAt) {
+        this(userId, movieId, rating, generatedAt, null);
+    }
+
+    /**
+     * Constructor for MovieRecommendation with movie metadata.
+     *
+     * @param userId      The user ID.
+     * @param movieId     The movie ID.
+     * @param rating      The predicted rating.
+     * @param generatedAt The timestamp when the recommendation was generated.
+     * @param metaData    The movie metadata (can be null).
+     */
+    public MovieRecommendation(int userId, int movieId, float rating, Instant generatedAt,
+                               MovieMetaData metaData) {
         this.userId = userId;
         this.movieId = movieId;
         this.rating = rating;
         this.generatedAt = Objects.requireNonNull(generatedAt, "generatedAt cannot be null");
+        this.metaData = metaData;  // CRITICAL FIX: Assign the metaData parameter
     }
 
     public int getUserId() {
@@ -47,6 +64,14 @@ public class MovieRecommendation implements Serializable {
         return generatedAt;
     }
 
+    public String getMovieTitle() {
+        return metaData != null ? metaData.getTitle() : null;
+    }
+
+    public List<String> getMovieGenres() {
+        return metaData != null ? metaData.getGenres() : null;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -55,12 +80,14 @@ public class MovieRecommendation implements Serializable {
         return userId == that.userId &&
                 movieId == that.movieId &&
                 Float.compare(that.rating, rating) == 0 &&
-                Objects.equals(generatedAt, that.generatedAt);
+                Objects.equals(generatedAt, that.generatedAt) &&
+                Objects.equals(metaData, that.metaData);
+
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userId, movieId, rating, generatedAt);
+        return Objects.hash(userId, movieId, rating, generatedAt, metaData);
     }
 
     @Override
@@ -70,6 +97,8 @@ public class MovieRecommendation implements Serializable {
                 ", movieId=" + movieId +
                 ", rating=" + rating +
                 ", generatedAt=" + generatedAt +
+                ", movieTitle='" + (metaData != null ? metaData.getTitle() : "N/A") + '\'' +
+                ", movieGenres=" + (metaData != null ? metaData.getGenres() : "N/A") +
                 '}';
     }
 }

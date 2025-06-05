@@ -1,9 +1,13 @@
 package org.hiast.batch.config;
 
+import java.io.Serializable;
+
 /**
  * Configuration for MongoDB connection.
+ * Implements Serializable for Spark distributed operations.
  */
-public class MongoConfig {
+public class MongoConfig implements Serializable {
+    private static final long serialVersionUID = 1L;
     private final String host;
     private final int port;
     private final String database;
