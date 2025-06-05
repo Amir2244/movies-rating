@@ -1,8 +1,10 @@
 package org.hiast.recommendationsapi.application.port.out;
 
 import org.hiast.ids.UserId;
-import org.hiast.recommendationsapi.domain.model.UserRecommendations;
+import org.hiast.model.UserRecommendations;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -35,4 +37,21 @@ public interface RecommendationsRepositoryPort {
      * @return true if recommendations exist, false otherwise.
      */
     boolean existsByUserId(UserId userId);
+    
+    /**
+     * Finds recommendations for multiple users.
+     *
+     * @param userIds The list of user IDs to search for.
+     * @return Map of user ID to their recommendations (only includes users with recommendations).
+     */
+    Map<UserId, UserRecommendations> findByUserIds(List<UserId> userIds);
+    
+    /**
+     * Finds limited recommendations for multiple users.
+     *
+     * @param userIds The list of user IDs to search for.
+     * @param limit   Maximum number of recommendations per user.
+     * @return Map of user ID to their recommendations (only includes users with recommendations).
+     */
+    Map<UserId, UserRecommendations> findByUserIdsWithLimit(List<UserId> userIds, int limit);
 }

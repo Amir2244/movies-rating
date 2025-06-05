@@ -40,25 +40,25 @@ public class CacheConfig {
     @Value("${app.cache.local.expire-after-write:PT30M}")
     private Duration localCacheExpireAfterWrite;
     
-    /**
-     * Primary cache manager using Redis for distributed caching.
-     */
-    @Bean
-    @Primary
-    public CacheManager redisCacheManager(RedisConnectionFactory redisConnectionFactory) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMillis(redisTtlMs))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                .disableCachingNullValues();
-        
-        return RedisCacheManager.builder(redisConnectionFactory)
-                .cacheDefaults(config)
-                .transactionAware()
-                .build();
-    }
+//    /**
+//     * Primary cache manager using Redis for distributed caching.
+//     */
+//    @Bean("redisCacheManager")
+//    @Primary
+//    public CacheManager redisCacheManager(RedisConnectionFactory redisConnectionFactory) {
+//        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+//                .entryTtl(Duration.ofMillis(redisTtlMs))
+//                .serializeKeysWith(RedisSerializationContext.SerializationPair
+//                        .fromSerializer(new StringRedisSerializer()))
+//                .serializeValuesWith(RedisSerializationContext.SerializationPair
+//                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+//                .disableCachingNullValues();
+//
+//        return RedisCacheManager.builder(redisConnectionFactory)
+//                .cacheDefaults(config)
+//                .transactionAware()
+//                .build();
+//    }
     
     /**
      * Local cache manager using Caffeine for fast local caching.
@@ -76,31 +76,31 @@ public class CacheConfig {
         return cacheManager;
     }
     
-    /**
-     * Cache configuration for user recommendations with custom TTL.
-     */
-    @Bean
-    public RedisCacheConfiguration userRecommendationsCacheConfig() {
-        return RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(2)) // Longer TTL for recommendations
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                .disableCachingNullValues();
-    }
-    
-    /**
-     * Cache configuration for user existence checks with shorter TTL.
-     */
-    @Bean
-    public RedisCacheConfiguration userExistsCacheConfig() {
-        return RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(15)) // Shorter TTL for existence checks
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                .disableCachingNullValues();
-    }
+//    /**
+//     * Cache configuration for user recommendations with custom TTL.
+//     */
+//    @Bean
+//    public RedisCacheConfiguration userRecommendationsCacheConfig() {
+//        return RedisCacheConfiguration.defaultCacheConfig()
+//                .entryTtl(Duration.ofHours(2)) // Longer TTL for recommendations
+//                .serializeKeysWith(RedisSerializationContext.SerializationPair
+//                        .fromSerializer(new StringRedisSerializer()))
+//                .serializeValuesWith(RedisSerializationContext.SerializationPair
+//                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+//                .disableCachingNullValues();
+//    }
+//
+//    /**
+//     * Cache configuration for user existence checks with shorter TTL.
+//     */
+//    @Bean
+//    public RedisCacheConfiguration userExistsCacheConfig() {
+//        return RedisCacheConfiguration.defaultCacheConfig()
+//                .entryTtl(Duration.ofMinutes(15)) // Shorter TTL for existence checks
+//                .serializeKeysWith(RedisSerializationContext.SerializationPair
+//                        .fromSerializer(new StringRedisSerializer()))
+//                .serializeValuesWith(RedisSerializationContext.SerializationPair
+//                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+//                .disableCachingNullValues();
+//    }
 }

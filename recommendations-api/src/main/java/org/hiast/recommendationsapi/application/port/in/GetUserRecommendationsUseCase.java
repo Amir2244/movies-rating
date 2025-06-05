@@ -1,7 +1,7 @@
 package org.hiast.recommendationsapi.application.port.in;
 
 import org.hiast.ids.UserId;
-import org.hiast.recommendationsapi.domain.model.UserRecommendations;
+import org.hiast.model.UserRecommendations;
 
 import java.util.Optional;
 

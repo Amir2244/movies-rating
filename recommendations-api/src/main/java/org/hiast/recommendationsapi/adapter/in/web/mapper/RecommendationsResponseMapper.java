@@ -2,8 +2,8 @@ package org.hiast.recommendationsapi.adapter.in.web.mapper;
 
 import org.hiast.recommendationsapi.adapter.in.web.response.MovieRecommendationResponse;
 import org.hiast.recommendationsapi.adapter.in.web.response.UserRecommendationsResponse;
-import org.hiast.recommendationsapi.domain.model.MovieRecommendation;
-import org.hiast.recommendationsapi.domain.model.UserRecommendations;
+import org.hiast.model.MovieRecommendation;
+import org.hiast.model.UserRecommendations;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

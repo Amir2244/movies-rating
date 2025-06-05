@@ -1,5 +1,7 @@
 package org.hiast.recommendationsapi.adapter.in.web.exception;
 
+import org.hiast.recommendationsapi.domain.exception.InvalidRecommendationRequestException;
+import org.hiast.recommendationsapi.domain.exception.UserRecommendationsNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,42 @@ import java.util.Map;
 public class GlobalExceptionHandler {
     
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    
+    /**
+     * Handles InvalidRecommendationRequestException.
+     */
+    @ExceptionHandler(InvalidRecommendationRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidRecommendationRequest(
+            InvalidRecommendationRequestException ex, WebRequest request) {
+        log.warn("Invalid recommendation request: {}", ex.getMessage());
+        
+        Map<String, Object> errorResponse = createErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Invalid Request",
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+        
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+    
+    /**
+     * Handles UserRecommendationsNotFoundException.
+     */
+    @ExceptionHandler(UserRecommendationsNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleUserRecommendationsNotFound(
+            UserRecommendationsNotFoundException ex, WebRequest request) {
+        log.info("User recommendations not found: {}", ex.getMessage());
+        
+        Map<String, Object> errorResponse = createErrorResponse(
+                HttpStatus.NOT_FOUND,
+                "Recommendations Not Found",
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+        
+        return ResponseEntity.notFound().build(); // Return empty body for 404s
+    }
     
     /**
      * Handles IllegalArgumentException.

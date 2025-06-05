@@ -5,13 +5,17 @@ import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.document.Use
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.mapper.RecommendationsDomainMapper;
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.repository.UserRecommendationsMongoRepository;
 import org.hiast.recommendationsapi.application.port.out.RecommendationsRepositoryPort;
-import org.hiast.recommendationsapi.domain.model.UserRecommendations;
+import org.hiast.model.UserRecommendations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * MongoDB adapter implementing the RecommendationsRepositoryPort.
@@ -103,6 +107,68 @@ public class MongoRecommendationsRepositoryAdapter implements RecommendationsRep
         } catch (Exception e) {
             log.error("Error checking if recommendations exist for user: {}", userId, e);
             return false;
+        }
+    }
+    
+    @Override
+    public Map<UserId, UserRecommendations> findByUserIds(List<UserId> userIds) {
+        Objects.requireNonNull(userIds, "userIds cannot be null");
+        
+        log.debug("Searching for recommendations for {} users", userIds.size());
+        
+        try {
+            List<Integer> intUserIds = userIds.stream()
+                .map(UserId::getUserId)
+                .collect(Collectors.toList());
+            
+            List<UserRecommendationsDocument> documents = mongoRepository.findByUserIdIn(intUserIds);
+            
+            Map<UserId, UserRecommendations> result = new HashMap<>();
+            for (UserRecommendationsDocument document : documents) {
+                UserId userId = UserId.of(document.getUserId());
+                UserRecommendations domain = domainMapper.toDomain(document);
+                result.put(userId, domain);
+            }
+            
+            log.debug("Found recommendations for {} out of {} requested users", 
+                result.size(), userIds.size());
+            return result;
+        } catch (Exception e) {
+            log.error("Error retrieving batch recommendations for users", e);
+            return new HashMap<>();
+        }
+    }
+    
+    @Override
+    public Map<UserId, UserRecommendations> findByUserIdsWithLimit(List<UserId> userIds, int limit) {
+        Objects.requireNonNull(userIds, "userIds cannot be null");
+        
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive, but was: " + limit);
+        }
+        
+        log.debug("Searching for up to {} recommendations for {} users", limit, userIds.size());
+        
+        try {
+            List<Integer> intUserIds = userIds.stream()
+                .map(UserId::getUserId)
+                .collect(Collectors.toList());
+            
+            List<UserRecommendationsDocument> documents = mongoRepository.findByUserIdIn(intUserIds);
+            
+            Map<UserId, UserRecommendations> result = new HashMap<>();
+            for (UserRecommendationsDocument document : documents) {
+                UserId userId = UserId.of(document.getUserId());
+                UserRecommendations domain = domainMapper.toDomainWithLimit(document, limit);
+                result.put(userId, domain);
+            }
+            
+            log.debug("Found recommendations for {} out of {} requested users (limit: {})", 
+                result.size(), userIds.size(), limit);
+            return result;
+        } catch (Exception e) {
+            log.error("Error retrieving batch recommendations for users with limit: {}", limit, e);
+            return new HashMap<>();
         }
     }
 }

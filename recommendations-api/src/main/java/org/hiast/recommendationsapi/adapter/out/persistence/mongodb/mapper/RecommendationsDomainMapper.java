@@ -4,8 +4,8 @@ import org.hiast.ids.MovieId;
 import org.hiast.ids.UserId;
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.document.MovieRecommendationDocument;
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.document.UserRecommendationsDocument;
-import org.hiast.recommendationsapi.domain.model.MovieRecommendation;
-import org.hiast.recommendationsapi.domain.model.UserRecommendations;
+import org.hiast.model.MovieRecommendation;
+import org.hiast.model.UserRecommendations;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

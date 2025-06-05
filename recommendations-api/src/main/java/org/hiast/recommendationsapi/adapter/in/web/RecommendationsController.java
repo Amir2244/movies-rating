@@ -4,14 +4,22 @@ import org.hiast.ids.UserId;
 import org.hiast.recommendationsapi.adapter.in.web.response.UserRecommendationsResponse;
 import org.hiast.recommendationsapi.adapter.in.web.mapper.RecommendationsResponseMapper;
 import org.hiast.recommendationsapi.application.port.in.GetUserRecommendationsUseCase;
-import org.hiast.recommendationsapi.domain.model.UserRecommendations;
+import org.hiast.recommendationsapi.application.port.in.GetBatchUserRecommendationsUseCase;
+import org.hiast.recommendationsapi.domain.exception.InvalidRecommendationRequestException;
+import org.hiast.recommendationsapi.domain.exception.UserRecommendationsNotFoundException;
+import org.hiast.model.UserRecommendations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * REST controller for recommendations API endpoints.
@@ -26,18 +34,23 @@ public class RecommendationsController {
     private static final Logger log = LoggerFactory.getLogger(RecommendationsController.class);
     
     private final GetUserRecommendationsUseCase getUserRecommendationsUseCase;
+    private final GetBatchUserRecommendationsUseCase getBatchUserRecommendationsUseCase;
     private final RecommendationsResponseMapper responseMapper;
     
     /**
      * Constructor for dependency injection.
      *
-     * @param getUserRecommendationsUseCase The use case for retrieving user recommendations.
-     * @param responseMapper                The mapper for converting domain models to response DTOs.
+     * @param getUserRecommendationsUseCase      The use case for retrieving user recommendations.
+     * @param getBatchUserRecommendationsUseCase The use case for retrieving batch user recommendations.
+     * @param responseMapper                     The mapper for converting domain models to response DTOs.
      */
     public RecommendationsController(GetUserRecommendationsUseCase getUserRecommendationsUseCase,
+                                   GetBatchUserRecommendationsUseCase getBatchUserRecommendationsUseCase,
                                    RecommendationsResponseMapper responseMapper) {
         this.getUserRecommendationsUseCase = Objects.requireNonNull(getUserRecommendationsUseCase, 
             "getUserRecommendationsUseCase cannot be null");
+        this.getBatchUserRecommendationsUseCase = Objects.requireNonNull(getBatchUserRecommendationsUseCase,
+            "getBatchUserRecommendationsUseCase cannot be null");
         this.responseMapper = Objects.requireNonNull(responseMapper, 
             "responseMapper cannot be null");
     }
@@ -71,9 +84,12 @@ public class RecommendationsController {
                 log.info("No recommendations found for user: {}", userId);
                 return ResponseEntity.notFound().build();
             }
-        } catch (IllegalArgumentException e) {
+        } catch (InvalidRecommendationRequestException e) {
             log.warn("Invalid request for user {}: {}", userId, e.getMessage());
             return ResponseEntity.badRequest().build();
+        } catch (UserRecommendationsNotFoundException e) {
+            log.info("No recommendations found for user: {}", userId);
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("Error retrieving recommendations for user: {}", userId, e);
             return ResponseEntity.internalServerError().build();
@@ -118,12 +134,110 @@ public class RecommendationsController {
                 log.info("No recommendations found for user: {}", userId);
                 return ResponseEntity.notFound().build();
             }
-        } catch (IllegalArgumentException e) {
+        } catch (InvalidRecommendationRequestException e) {
             log.warn("Invalid request for user {} with limit {}: {}", userId, limit, e.getMessage());
             return ResponseEntity.badRequest().build();
+        } catch (UserRecommendationsNotFoundException e) {
+            log.info("No recommendations found for user: {} with limit: {}", userId, limit);
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("Error retrieving recommendations for user: {} with limit: {}", userId, limit, e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+    
+    /**
+     * Retrieves recommendations for multiple users in batch.
+     *
+     * @param userIds Comma-separated list of user IDs.
+     * @return ResponseEntity containing a map of user recommendations.
+     */
+    @GetMapping("/batch")
+    public ResponseEntity<Map<String, UserRecommendationsResponse>> getBatchUserRecommendations(
+            @RequestParam("userIds") String userIds) {
+        log.info("Received batch request for user IDs: {}", userIds);
+        
+        try {
+            List<UserId> userIdList = parseUserIds(userIds);
+            
+            Map<UserId, UserRecommendations> recommendations = 
+                getBatchUserRecommendationsUseCase.getBatchUserRecommendations(userIdList);
+            
+            Map<String, UserRecommendationsResponse> response = convertBatchResponse(recommendations);
+            
+            log.info("Successfully retrieved batch recommendations for {} out of {} users", 
+                response.size(), userIdList.size());
+            return ResponseEntity.ok(response);
+            
+        } catch (InvalidRecommendationRequestException e) {
+            log.warn("Invalid batch request: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error retrieving batch recommendations for user IDs: {}", userIds, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Retrieves limited recommendations for multiple users in batch.
+     *
+     * @param userIds Comma-separated list of user IDs.
+     * @param limit   Maximum number of recommendations per user.
+     * @return ResponseEntity containing a map of user recommendations.
+     */
+    @GetMapping("/batch/top/{limit}")
+    public ResponseEntity<Map<String, UserRecommendationsResponse>> getBatchUserRecommendationsWithLimit(
+            @RequestParam("userIds") String userIds,
+            @PathVariable int limit) {
+        log.info("Received batch request for top {} recommendations for user IDs: {}", limit, userIds);
+        
+        try {
+            List<UserId> userIdList = parseUserIds(userIds);
+            
+            Map<UserId, UserRecommendations> recommendations = 
+                getBatchUserRecommendationsUseCase.getBatchUserRecommendations(userIdList, limit);
+            
+            Map<String, UserRecommendationsResponse> response = convertBatchResponse(recommendations);
+            
+            log.info("Successfully retrieved batch recommendations for {} out of {} users (limit: {})", 
+                response.size(), userIdList.size(), limit);
+            return ResponseEntity.ok(response);
+            
+        } catch (InvalidRecommendationRequestException e) {
+            log.warn("Invalid batch request with limit {}: {}", limit, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error retrieving batch recommendations for user IDs: {} with limit: {}", userIds, limit, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Parses comma-separated user IDs string into a list of UserId objects.
+     */
+    private List<UserId> parseUserIds(String userIdsString) {
+        try {
+            return Stream.of(userIdsString.split(","))
+                .map(String::trim)
+                .map(Integer::parseInt)
+                .map(UserId::of)
+                .collect(Collectors.toList());
+        } catch (NumberFormatException e) {
+            throw new InvalidRecommendationRequestException("Invalid user ID format: " + userIdsString);
+        }
+    }
+    
+    /**
+     * Converts batch domain results to response DTOs.
+     */
+    private Map<String, UserRecommendationsResponse> convertBatchResponse(
+            Map<UserId, UserRecommendations> recommendations) {
+        Map<String, UserRecommendationsResponse> response = new HashMap<>();
+        for (Map.Entry<UserId, UserRecommendations> entry : recommendations.entrySet()) {
+            String userIdKey = String.valueOf(entry.getKey().getUserId());
+            UserRecommendationsResponse userResponse = responseMapper.toResponse(entry.getValue());
+            response.put(userIdKey, userResponse);
+        }
+        return response;
     }
 }
