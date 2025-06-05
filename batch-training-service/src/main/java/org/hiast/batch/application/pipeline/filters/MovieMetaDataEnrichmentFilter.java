@@ -3,10 +3,13 @@ package org.hiast.batch.application.pipeline.filters;
 import org.apache.spark.ml.recommendation.ALSModel;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.hiast.batch.adapter.out.metadata.MovieMetaDataAdapter;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.pipeline.Filter;
+import org.hiast.batch.application.port.out.MovieMetaDataPort;
 import org.hiast.batch.application.port.out.ResultPersistencePort;
 import org.hiast.batch.domain.exception.ModelPersistenceException;
+import org.hiast.batch.domain.model.MovieMetaData;
 import org.hiast.batch.domain.model.MovieRecommendation;
 import org.hiast.batch.domain.model.UserRecommendations;
 import org.slf4j.Logger;
@@ -15,24 +18,27 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
- * Filter that saves the recommendation results to the persistence store.
+ * Filter that enriches recommendation results with movie metadata and saves them to the persistence store.
+ * This filter creates a MovieMetaDataAdapter from the loaded movie data and uses it to enrich recommendations.
  */
-public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
-    private static final Logger log = LoggerFactory.getLogger(ResultSavingFilter.class);
+public class MovieMetaDataEnrichmentFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
+    private static final Logger log = LoggerFactory.getLogger(MovieMetaDataEnrichmentFilter.class);
     private static final int NUM_RECOMMENDATIONS_PER_USER = 10;
 
     private final ResultPersistencePort resultPersistence;
 
-    public ResultSavingFilter(ResultPersistencePort resultPersistence) {
+    public MovieMetaDataEnrichmentFilter(ResultPersistencePort resultPersistence) {
         this.resultPersistence = resultPersistence;
     }
 
     @Override
     public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
-        log.info("Saving recommendation results...");
+        log.info("Enriching and saving recommendation results with movie metadata...");
 
         ALSModel model = context.getModel();
 
@@ -42,6 +48,11 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
         }
 
         try {
+            // Create MovieMetaDataAdapter from the loaded movie data
+            Dataset<Row> rawMovies = context.getRawMovies();
+            MovieMetaDataPort movieMetaDataPort = new MovieMetaDataAdapter(rawMovies);
+            log.info("Created MovieMetaDataAdapter with movie data");
+
             // Generate recommendations for all users
             log.info("Generating top {} recommendations for all users...", NUM_RECOMMENDATIONS_PER_USER);
             Dataset<Row> userRecommendations = model.recommendForAllUsers(NUM_RECOMMENDATIONS_PER_USER);
@@ -51,14 +62,14 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
             log.info("Sample of user recommendations (first 5 rows, truncate=false):");
             userRecommendations.show(5, false);
 
-            // Convert Spark Dataset to domain model objects
-            List<UserRecommendations> userRecommendationsList = convertToUserRecommendations(userRecommendations);
-            log.info("Converted {} user recommendations to domain model objects", userRecommendationsList.size());
+            // Convert Spark Dataset to domain model objects with movie metadata enrichment
+            List<UserRecommendations> userRecommendationsList = convertToUserRecommendations(userRecommendations, movieMetaDataPort);
+            log.info("Converted {} user recommendations to domain model objects with movie metadata", userRecommendationsList.size());
 
             // Save to persistence store
             boolean saved = resultPersistence.saveUserRecommendations(userRecommendationsList);
             if (saved) {
-                log.info("Recommendation results saved successfully.");
+                log.info("Recommendation results saved successfully with movie metadata.");
                 context.setResultsSaved(true);
             } else {
                 log.warn("Failed to save recommendation results.");
@@ -66,8 +77,8 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
             }
 
         } catch (Exception e) {
-            log.error("Error saving recommendation results: {}", e.getMessage(), e);
-            throw new ModelPersistenceException("Error saving recommendation results", e);
+            log.error("Error enriching and saving recommendation results: {}", e.getMessage(), e);
+            throw new ModelPersistenceException("Error enriching and saving recommendation results", e);
         }
 
         context.markResultSavingCompleted();
@@ -76,14 +87,30 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
 
     /**
      * Converts a Spark Dataset of user recommendations to a list of UserRecommendations domain objects.
+     * Enriches recommendations with movie metadata (title and genres) when available.
      */
-    private List<UserRecommendations> convertToUserRecommendations(Dataset<Row> userRecommendationsDataset) {
+    private List<UserRecommendations> convertToUserRecommendations(Dataset<Row> userRecommendationsDataset, 
+                                                                  MovieMetaDataPort movieMetaDataPort) {
         List<UserRecommendations> result = new ArrayList<>();
         Instant now = Instant.now();
         String modelVersion = "ALS-" + UUID.randomUUID().toString().substring(0, 8);
 
         // Collect the dataset to the driver (be careful with large datasets)
         List<Row> rows = userRecommendationsDataset.collectAsList();
+
+        // Collect all unique movie IDs for batch metadata lookup
+        List<Integer> allMovieIds = rows.stream()
+                .flatMap(row -> {
+                    List<Row> recommendations = row.getList(1);
+                    return recommendations.stream().map(rec -> rec.getInt(0));
+                })
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Batch fetch movie metadata to avoid N+1 queries
+        Map<Integer, MovieMetaData> movieMetaDataMap = movieMetaDataPort.getMovieMetaDataBatch(allMovieIds);
+        log.info("Retrieved metadata for {} out of {} unique movies in recommendations", 
+                movieMetaDataMap.size(), allMovieIds.size());
 
         for (Row row : rows) {
             int userId = row.getInt(0);
@@ -115,7 +142,20 @@ public class ResultSavingFilter implements Filter<ALSTrainingPipelineContext, AL
                     }
                 }
 
-                MovieRecommendation movieRec = new MovieRecommendation(userId, movieId, rating, now);
+                // Get movie metadata if available
+                MovieMetaData metaData = movieMetaDataMap.get(movieId);
+                MovieRecommendation movieRec;
+                
+                if (metaData != null) {
+                    // Create recommendation with movie metadata
+                    movieRec = new MovieRecommendation(userId, movieId, rating, now, 
+                                                    metaData);
+                } else {
+                    // Create recommendation without metadata
+                    movieRec = new MovieRecommendation(userId, movieId, rating, now);
+                    log.debug("No metadata found for movie ID: {}", movieId);
+                }
+                
                 movieRecommendations.add(movieRec);
             }
 

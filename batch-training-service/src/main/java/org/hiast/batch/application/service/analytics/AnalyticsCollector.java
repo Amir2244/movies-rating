@@ -1,9 +1,9 @@
-package org.hiast.batch.domain.model.analytics;
+package org.hiast.batch.application.service.analytics;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.hiast.batch.domain.model.DataAnalytics;
-import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
+import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 
 import java.util.List;
@@ -19,18 +19,16 @@ public interface AnalyticsCollector {
     
     /**
      * Collects analytics data and returns a DataAnalytics object.
-     * 
+     *
      * @param ratingsDf The ratings dataset
      * @param moviesData The movies metadata dataset (can be null)
      * @param tagsData The tags dataset (can be null)
-     * @param context The pipeline context for additional data access
      * @return DataAnalytics object containing the collected metrics
      * @throws AnalyticsCollectionException if analytics collection fails
      */
     List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
                                          Dataset<Row> moviesData,
-                                         Dataset<Row> tagsData,
-                                         ALSTrainingPipelineContext context);
+                                         Dataset<Row> tagsData);
     
     /**
      * Returns the analytics type this collector handles.

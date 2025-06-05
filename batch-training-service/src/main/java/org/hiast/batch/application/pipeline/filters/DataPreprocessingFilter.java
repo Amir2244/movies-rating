@@ -10,6 +10,7 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.storage.StorageLevel;
 import org.hiast.batch.application.pipeline.Filter;
+import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
 import org.hiast.batch.domain.exception.DataLoadingException;
@@ -19,8 +20,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Filter that preprocesses the raw ratings data.
+ * Works with both ALSTrainingPipelineContext and AnalyticsPipelineContext via BasePipelineContext.
  */
-public class DataPreprocessingFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
+public class DataPreprocessingFilter<T extends BasePipelineContext> implements Filter<T, T> {
     private static final Logger log = LoggerFactory.getLogger(DataPreprocessingFilter.class);
 
     private final RatingDataProviderPort ratingDataProvider;
@@ -30,7 +32,7 @@ public class DataPreprocessingFilter implements Filter<ALSTrainingPipelineContex
     }
 
     @Override
-    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
+    public T process(T context) {
         log.info("Preprocessing ratings data into Dataset<ProcessedRating>...");
 
         Dataset<Row> rawRatings = context.getRawRatings();
@@ -94,8 +96,14 @@ public class DataPreprocessingFilter implements Filter<ALSTrainingPipelineContex
         ratingsDf.persist(StorageLevel.MEMORY_AND_DISK());
         log.info("Persisted 'ratingsDf'. Count after persist: {}", ratingsDf.count());
 
+        context.setDataPreprocessed(true);
         log.info("Data preprocessing completed successfully");
-        context.markPreprocessingCompleted();
+
+        // Call training-specific method if it's a training context
+        if (context instanceof ALSTrainingPipelineContext) {
+            ((ALSTrainingPipelineContext) context).markPreprocessingCompleted();
+        }
+
         return context;
     }
 }

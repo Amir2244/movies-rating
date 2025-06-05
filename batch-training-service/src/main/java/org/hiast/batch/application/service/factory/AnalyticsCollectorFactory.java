@@ -1,7 +1,6 @@
 package org.hiast.batch.application.service.factory;
 
 import org.hiast.batch.application.service.analytics.*;
-import org.hiast.batch.domain.model.analytics.AnalyticsCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,16 +30,8 @@ public class AnalyticsCollectorFactory {
 
         List<AnalyticsCollector> collectors = new ArrayList<>();
 
-        collectors.add(new UserAnalyticsService());
-        collectors.add(new ContentAnalyticsService());
         collectors.add(new DataQualityAnalyticsService());
         collectors.add(new RatingDistributionAnalyticsService());
-        collectors.add(new TemporalTrendsAnalyticsService());
-        collectors.add(new TagAnalyticsService());
-        collectors.add(new SystemPerformanceAnalyticsService());
-        collectors.add(new DataFreshnessAnalyticsService());
-        collectors.add(new UserSegmentationAnalyticsService());
-        collectors.add(new UserEngagementAnalyticsService());
         // Sort by priority (lower numbers = higher priority)
         collectors.sort(Comparator.comparingInt(AnalyticsCollector::getPriority));
 
@@ -55,14 +46,12 @@ public class AnalyticsCollectorFactory {
      * @return List of matching analytics collectors
      */
     public static List<AnalyticsCollector> createCollectors(String... analyticsTypes) {
-        List<AnalyticsCollector> allCollectors = createAllCollectors();
         List<AnalyticsCollector> filteredCollectors = new ArrayList<>();
-
         for (String type : analyticsTypes) {
-            allCollectors.stream()
-                    .filter(collector -> collector.getAnalyticsType().equalsIgnoreCase(type))
-                    .findFirst()
-                    .ifPresent(filteredCollectors::add);
+            AnalyticsCollector collector = createCollector(type);
+            if (collector != null) {
+                filteredCollectors.add(collector);
+            }
         }
 
         log.info("Created {} filtered analytics collectors for types: {}",

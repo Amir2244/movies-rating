@@ -1,6 +1,6 @@
 package org.hiast.batch.application.pipeline.filters;
 
-import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
+import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.application.pipeline.Filter;
 import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
 import org.hiast.batch.application.service.analytics.AnalyticsExecutionResult;
@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * The filter maintains its role in the pipeline while the actual analytics
  * collection is handled by domain services, preserving the Hexagonal Architecture.
  */
-public class DataAnalyticsFilter implements Filter<ALSTrainingPipelineContext, ALSTrainingPipelineContext> {
+public class DataAnalyticsFilter<T extends BasePipelineContext> implements Filter<T, T> {
     private static final Logger log = LoggerFactory.getLogger(DataAnalyticsFilter.class);
 
     private final AnalyticsOrchestrator analyticsOrchestrator;
@@ -34,7 +34,7 @@ public class DataAnalyticsFilter implements Filter<ALSTrainingPipelineContext, A
     }
 
     @Override
-    public ALSTrainingPipelineContext process(ALSTrainingPipelineContext context) {
+    public T process(T context) {
         log.info("Starting analytics collection using orchestrator...");
         
         try {

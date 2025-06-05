@@ -1,7 +1,6 @@
 package org.hiast.batch.adapter.out.persistence.hdfs;
 
 import org.apache.spark.api.java.function.FilterFunction;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -22,10 +21,9 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -37,7 +35,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
     private final String ratingsInputHdfsPath;
     private final String moviesInputHdfsPath;
     private final String tagsInputHdfsPath;
-    private final String linksInputHdfsPath;
+   // private final String linksInputHdfsPath;
 
     private static String bytesToHex(byte[] bytes) {
         if (bytes == null) return "null";
@@ -50,17 +48,17 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
 
     public HdfsRatingDataProviderAdapter(String ratingsInputHdfsPath) {
         this.ratingsInputHdfsPath = ratingsInputHdfsPath;
-        // Derive other file paths from the ratings path
+        // Derive other file paths from the rating path
         String basePath = ratingsInputHdfsPath.substring(0, ratingsInputHdfsPath.lastIndexOf('/'));
         this.moviesInputHdfsPath = basePath + "/movies.csv";
         this.tagsInputHdfsPath = basePath + "/tags.csv";
-        this.linksInputHdfsPath = basePath + "/links.csv";
+       // this.linksInputHdfsPath = basePath + "/links.csv";
 
         log.info("HdfsRatingDataProviderAdapter initialized with paths:");
         log.info("  Ratings: {}", ratingsInputHdfsPath);
         log.info("  Movies: {}", moviesInputHdfsPath);
         log.info("  Tags: {}", tagsInputHdfsPath);
-        log.info("  Links: {}", linksInputHdfsPath);
+      //  log.info("  Links: {}", linksInputHdfsPath);
     }
 
     public HdfsRatingDataProviderAdapter(String ratingsInputHdfsPath, String moviesInputHdfsPath,
@@ -68,7 +66,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
         this.ratingsInputHdfsPath = ratingsInputHdfsPath;
         this.moviesInputHdfsPath = moviesInputHdfsPath;
         this.tagsInputHdfsPath = tagsInputHdfsPath;
-        this.linksInputHdfsPath = linksInputHdfsPath;
+       // this.linksInputHdfsPath = linksInputHdfsPath;
 
         log.info("HdfsRatingDataProviderAdapter initialized with explicit paths:");
         log.info("  Ratings: {}", ratingsInputHdfsPath);
@@ -158,7 +156,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                 // Get the number of cores available
                 int numCores = Runtime.getRuntime().availableProcessors();
                 // Use 2x number of cores as a reasonable default for partitions
-                int numPartitions = Math.max(2 * numCores, 4);
+                int numPartitions = Math.max(2* numCores, 4);
                 log.info("Setting number of partitions to {} based on {} available cores", numPartitions, numCores);
 
                 Dataset<Row> csvData = spark.read()
@@ -170,8 +168,6 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                         .csv(ratingsInputHdfsPath)
                         .repartition(numPartitions);
 
-                // Cache the data for better performance
-                csvData.persist(StorageLevel.MEMORY_AND_DISK());
 
                 log.info("Raw data schema from HDFS (CSV attempt):");
                 csvData.printSchema();
@@ -212,11 +208,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
         log.info("Sample of rawRatingsDataset at entry (first 5 rows, truncate=false):");
         rawRatingsDataset.show(5, false);
 
-        // Check if dataset is already cached
-        if (!rawRatingsDataset.storageLevel().useMemory()) {
-            log.info("Caching rawRatingsDataset for better performance");
-            rawRatingsDataset.persist(StorageLevel.MEMORY_AND_DISK());
-        }
+
 
         long initialRawCount = rawRatingsDataset.count();
         log.info("Count of rows in rawRatingsDataset at entry of preprocessRatings: {}", initialRawCount);
@@ -233,16 +225,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
 
             if (isBinaryValueFormat) {
                 log.info("Detected single binary 'value' column format. Attempting to parse binary data...");
-                StructType parsedSchema = new StructType()
-                        .add("userId", DataTypes.IntegerType, false).add("movieId",
-                                DataTypes.IntegerType, false)
-                        .add("rating", DataTypes.DoubleType, false).add("timestamp",
-                                DataTypes.LongType, false);
-                List<Row> parsedRows = new ArrayList<>();
-                processableData = spark.createDataFrame(parsedRows, parsedSchema);
-                log.info("Created DataFrame from parsed binary values. Schema:");
-                processableData.printSchema();
-                processableData.show(5, false);
+                throw new DataLoadingException("Parsing of single binary 'value' column Parquet files is not currently supported.");
             } else {
                 log.info("Processing structured data. Expected columns: userId, movieId, rating, timestamp.");
                 final String userIdCol = "userId";
@@ -322,7 +305,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                 return spark.emptyDataset(Encoders.bean(ProcessedRating.class));
             }
 
-            // Use map instead of flatMap for better performance when we don't need to filter out rows
+            // Use a map instead of flatMap for better performance when we don't need to filter out rows
             Dataset<ProcessedRating> processedRatings = processableData
                     // First filter out rows with null values to avoid exceptions during mapping
                     .filter((FilterFunction<Row>) row -> {
@@ -356,10 +339,10 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                         return new ProcessedRating(domainUserId, domainMovieId, domainRatingValue, domainTimestamp);
                     }, Encoders.kryo(ProcessedRating.class))
                     // Handle exceptions during mapping
-                    .filter((FilterFunction<ProcessedRating>) rating -> rating != null);
+                    .filter((FilterFunction<ProcessedRating>) Objects::nonNull);
 
             // Cache the processed ratings for better performance
-            processedRatings.persist(StorageLevel.MEMORY_AND_DISK());
+            processedRatings.persist(StorageLevel.MEMORY_AND_DISK_SER());
 
             log.info("Schema of Dataset<ProcessedRating> (reflects ProcessedRating bean):");
             processedRatings.printSchema();
@@ -376,7 +359,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                 throw new DataLoadingException("All processable rows were filtered out during preprocessing. Check data format.");
             }
 
-            // Unpersist raw data if it's no longer needed
+            // Unpersist raw data if it's no longer necessary
             if (rawRatingsDataset.storageLevel().useMemory()) {
                 log.info("Unpersisting raw ratings dataset to free up memory");
                 rawRatingsDataset.unpersist();
@@ -406,18 +389,18 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
         return loadCsvFile(spark, tagsInputHdfsPath, "tags", createTagsSchema());
     }
 
-    @Override
-    public Dataset<Row> loadRawLinks(SparkSession spark) {
-        log.info("Attempting to load raw links from HDFS path: {}", linksInputHdfsPath);
-        return loadCsvFile(spark, linksInputHdfsPath, "links", createLinksSchema());
-    }
+//    @Override
+//    public Dataset<Row> loadRawLinks(SparkSession spark) {
+//        log.info("Attempting to load raw links from HDFS path: {}", linksInputHdfsPath);
+//        return loadCsvFile(spark, linksInputHdfsPath, "links", createLinksSchema());
+//    }
 
     /**
      * Generic method to load CSV files from HDFS with proper error handling.
      */
     private Dataset<Row> loadCsvFile(SparkSession spark, String hdfsPath, String fileType, StructType schema) {
         try {
-            // Check if file exists
+            // Check if a file exists
             boolean fileExists = checkFileExists(spark, hdfsPath);
             if (!fileExists) {
                 log.warn("{} file does not exist at path: {}. Returning empty dataset.", fileType, hdfsPath);
@@ -441,7 +424,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
                     .repartition(numPartitions);
 
             // Cache the data for better performance
-            csvData.persist(StorageLevel.MEMORY_AND_DISK());
+            csvData.persist(StorageLevel.MEMORY_AND_DISK_SER());
 
             long dataCount = csvData.count();
             long endTime = System.nanoTime();
@@ -485,7 +468,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
 
     /**
      * Create schema for movies.csv file.
-     * Expected columns: movieId,title,genres
+     * Expected columns: movieId, title,genres
      */
     private StructType createMoviesSchema() {
         return new StructType()
@@ -496,7 +479,7 @@ public class HdfsRatingDataProviderAdapter implements RatingDataProviderPort {
 
     /**
      * Create schema for tags.csv file.
-     * Expected columns: userId,movieId,tag,timestamp
+     * Expected columns: userId, movieId, tag,timestamp
      */
     private StructType createTagsSchema() {
         return new StructType()

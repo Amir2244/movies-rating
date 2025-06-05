@@ -18,9 +18,9 @@ public enum AnalyticsType {
     DATA_FRESHNESS("Data Quality", "Monitors freshness and recency of rating data"),
 
     /**
-     * Analytics about data consistency across different sources and time periods.
+     * Analytics encompassing overall data quality aspects including completeness, freshness, and consistency.
      */
-    DATA_CONSISTENCY("Data Quality", "Validates consistency of data across sources"),
+    DATA_QUALITY("Data Quality", "Comprehensive data quality metrics"),
 
     // === USER BEHAVIOR ANALYTICS ===
     /**
@@ -32,12 +32,6 @@ public enum AnalyticsType {
      * Analytics about user engagement depth and interaction quality.
      */
     USER_ENGAGEMENT("User Behavior", "Measures user engagement depth and interaction quality"),
-
-    /**
-     * Analytics about user retention and return patterns.
-     */
-    USER_RETENTION("User Behavior", "Analyzes user retention and return behavior"),
-
     /**
      * Analytics for user segmentation based on behavior patterns.
      */
@@ -69,48 +63,18 @@ public enum AnalyticsType {
      */
     TEMPORAL_TRENDS("Content Analytics", "Identifies temporal trends and seasonal patterns"),
 
-    /**
-     * Analytics about seasonal content performance patterns.
-     */
-    SEASONAL_PATTERNS("Content Analytics", "Analyzes seasonal content performance patterns"),
-
     // === SYSTEM PERFORMANCE ANALYTICS ===
     /**
      * Analytics about batch processing performance and efficiency.
      */
     PROCESSING_PERFORMANCE("System Performance", "Monitors batch processing performance metrics"),
 
-    /**
-     * Analytics about model performance drift over time.
-     */
-    MODEL_DRIFT("System Performance", "Detects model performance drift and degradation"),
-
-    /**
-     * Analytics about prediction accuracy and model effectiveness.
-     */
-    PREDICTION_ACCURACY("System Performance", "Measures prediction accuracy and model effectiveness"),
-
-    // === BUSINESS METRICS ===
-    /**
-     * Analytics about recommendation system effectiveness.
-     */
-    RECOMMENDATION_EFFECTIVENESS("Business Metrics", "Measures recommendation system effectiveness"),
 
     /**
      * Analytics about user satisfaction with recommendations.
      */
-    USER_SATISFACTION("Business Metrics", "Tracks user satisfaction with recommendations"),
+    USER_SATISFACTION("Business Metrics", "Tracks user satisfaction with recommendations");
 
-    /**
-     * Analytics about conversion rates from recommendations to actions.
-     */
-    CONVERSION_RATES("Business Metrics", "Measures conversion rates from recommendations"),
-
-    // === CUSTOM ANALYTICS ===
-    /**
-     * Custom analytics type for specialized or experimental metrics.
-     */
-    CUSTOM("Custom", "Custom analytics for specialized metrics");
 
     private final String category;
     private final String description;
@@ -168,11 +132,4 @@ public enum AnalyticsType {
         return "System Performance".equals(category);
     }
 
-    /**
-     * Checks if this analytics type is related to business metrics.
-     * @return true if this is a business metrics analytics type
-     */
-    public boolean isBusinessMetrics() {
-        return "Business Metrics".equals(category);
-    }
 }

@@ -3,11 +3,10 @@ package org.hiast.batch.application.service.analytics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.functions;
-import org.hiast.batch.application.pipeline.ALSTrainingPipelineContext;
+import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
 import org.hiast.batch.domain.model.AnalyticsType;
 import org.hiast.batch.domain.model.DataAnalytics;
-import org.hiast.batch.domain.model.analytics.AnalyticsCollector;
 import org.hiast.batch.domain.model.analytics.AnalyticsMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +31,7 @@ public class SystemPerformanceAnalyticsService implements AnalyticsCollector {
     @Override
     public List<DataAnalytics> collectAnalytics(Dataset<Row> ratingsDf,
                                                 Dataset<Row> moviesData,
-                                                Dataset<Row> tagsData,
-                                                ALSTrainingPipelineContext context) {
+                                                Dataset<Row> tagsData) {
         
         if (!canProcess(ratingsDf, moviesData, tagsData)) {
             throw new AnalyticsCollectionException("SYSTEM_PERFORMANCE", "Insufficient data for system performance analytics");
@@ -45,7 +43,7 @@ public class SystemPerformanceAnalyticsService implements AnalyticsCollector {
             AnalyticsMetrics metrics = AnalyticsMetrics.builder();
             
             // Collect processing performance metrics - exact same as original
-            collectProcessingPerformanceMetrics(ratingsDf, context, metrics);
+            collectProcessingPerformanceMetrics(ratingsDf, metrics);
             
             // Collect additional system metrics
             collectSystemResourceMetrics(ratingsDf, moviesData, tagsData, metrics);
@@ -72,7 +70,7 @@ public class SystemPerformanceAnalyticsService implements AnalyticsCollector {
     /**
      * Collects processing performance metrics - exact same as original implementation.
      */
-    private void collectProcessingPerformanceMetrics(Dataset<Row> ratingsDf, ALSTrainingPipelineContext context, 
+    private void collectProcessingPerformanceMetrics(Dataset<Row> ratingsDf, 
                                                    AnalyticsMetrics metrics) {
         log.debug("Collecting processing performance metrics...");
         
