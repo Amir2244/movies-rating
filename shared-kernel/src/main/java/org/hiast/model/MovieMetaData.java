@@ -1,5 +1,7 @@
 package org.hiast.model;
 
+import org.hiast.ids.MovieId;
+
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
@@ -11,7 +13,7 @@ import java.util.Objects;
 public class MovieMetaData implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final int movieId;
+    private final MovieId movieId;
     private final String title;
     private final List<String> genres;
 
@@ -22,13 +24,13 @@ public class MovieMetaData implements Serializable {
      * @param title   The movie title.
      * @param genres  The list of genres for the movie.
      */
-    public MovieMetaData(int movieId, String title, List<String> genres) {
+    public MovieMetaData(MovieId movieId, String title, List<String> genres) {
         this.movieId = movieId;
         this.title = Objects.requireNonNull(title, "title cannot be null");
         this.genres = Objects.requireNonNull(genres, "genres cannot be null");
     }
 
-    public int getMovieId() {
+    public MovieId getMovieId() {
         return movieId;
     }
 
