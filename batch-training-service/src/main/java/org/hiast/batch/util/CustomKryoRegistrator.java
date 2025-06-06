@@ -3,18 +3,17 @@ package org.hiast.batch.util;
 import com.esotericsoftware.kryo.Kryo;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.hiast.batch.domain.model.ModelFactors;
-import org.hiast.batch.domain.model.MovieRecommendation;
 import org.hiast.batch.domain.model.ProcessedRating;
-import org.hiast.batch.domain.model.UserRecommendations;
 import org.hiast.ids.MovieId;
 import org.hiast.ids.UserId;
+import org.hiast.model.MovieMetaData;
+import org.hiast.model.MovieRecommendation;
 import org.hiast.model.RatingValue;
+import org.hiast.model.UserRecommendations;
 import org.hiast.model.factors.ItemFactor;
 import org.hiast.model.factors.UserFactor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.collection.immutable.List;
-import scala.collection.mutable.WrappedArray;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -45,7 +44,7 @@ public class CustomKryoRegistrator implements KryoRegistrator {
         kryo.register(ItemFactor.class);
         kryo.register(java.util.HashMap.class);
         kryo.register(java.util.ArrayList.class);
-        kryo.register(org.hiast.batch.domain.model.MovieMetaData.class);
+        kryo.register(MovieMetaData.class);
         kryo.register(org.hiast.batch.domain.model.DataAnalytics.class);
         // Register Java classes used in the application
         kryo.register(ArrayList.class);

@@ -7,9 +7,11 @@ import org.hiast.batch.application.pipeline.Filter;
 import org.hiast.batch.application.port.out.ResultPersistencePort;
 import org.hiast.batch.application.port.out.RatingDataProviderPort;
 import org.hiast.batch.domain.exception.ModelPersistenceException;
-import org.hiast.batch.domain.model.MovieMetaData;
-import org.hiast.batch.domain.model.MovieRecommendation;
-import org.hiast.batch.domain.model.UserRecommendations;
+import org.hiast.ids.MovieId;
+import org.hiast.ids.UserId;
+import org.hiast.model.MovieMetaData;
+import org.hiast.model.MovieRecommendation;
+import org.hiast.model.UserRecommendations;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -183,8 +185,8 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
      * Collect recommendations without enrichment
      */
     private List<UserRecommendations> collectWithoutEnrichment(Dataset<Row> recommendations,
-                                                              Instant now,
-                                                              String modelVersion) {
+                                                               Instant now,
+                                                               String modelVersion) {
         List<UserRecommendations> result = new ArrayList<>();
         
         List<Row> rows = recommendations.collectAsList();
@@ -196,10 +198,10 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
             for (Row rec : recs) {
                 int movieId = rec.getInt(0);
                 float rating = rec.getFloat(1);
-                movieRecs.add(new MovieRecommendation(userId, movieId, rating, now));
+                movieRecs.add(new MovieRecommendation(UserId.of(userId), MovieId.of(movieId), rating, now));
             }
             
-            result.add(new UserRecommendations(userId, movieRecs, now, modelVersion));
+            result.add(new UserRecommendations(UserId.of(userId), movieRecs, now, modelVersion));
         }
         
         return result;
@@ -268,14 +270,14 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
                     List<String> genres = genresStr.isEmpty() ? 
                         Collections.emptyList() : Arrays.asList(genresStr.split("\\|"));
                     
-                    MovieMetaData metaData = new MovieMetaData(movieId, title, genres);
-                    movieRecs.add(new MovieRecommendation(userId, movieId, rating, now, metaData));
+                    MovieMetaData metaData = new MovieMetaData(MovieId.of(movieId), title, genres);
+                    movieRecs.add(new MovieRecommendation(UserId.of(userId), MovieId.of(movieId), rating, now, metaData));
                 } else {
-                    movieRecs.add(new MovieRecommendation(userId, movieId, rating, now));
+                    movieRecs.add(new MovieRecommendation(UserId.of(userId), MovieId.of(movieId), rating, now));
                 }
             }
             
-            result.add(new UserRecommendations(userId, movieRecs, now, modelVersion));
+            result.add(new UserRecommendations(UserId.of(userId), movieRecs, now, modelVersion));
         }
         
         return result;
