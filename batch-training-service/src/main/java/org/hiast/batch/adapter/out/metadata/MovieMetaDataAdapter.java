@@ -3,7 +3,8 @@ package org.hiast.batch.adapter.out.metadata;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.hiast.batch.application.port.out.MovieMetaDataPort;
-import org.hiast.batch.domain.model.MovieMetaData;
+import org.hiast.ids.MovieId;
+import org.hiast.model.MovieMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +57,7 @@ public class MovieMetaDataAdapter implements MovieMetaDataPort {
                     List<String> genres = parseGenres(genresStr);
 
                     // Create MovieMetaData object
-                    MovieMetaData metaData = new MovieMetaData(movieId, title, genres);
+                    MovieMetaData metaData = new MovieMetaData(MovieId.of(movieId), title, genres);
                     movieMetaDataCache.put(movieId, metaData);
 
                 } catch (Exception e) {

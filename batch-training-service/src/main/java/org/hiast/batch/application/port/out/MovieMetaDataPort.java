@@ -1,6 +1,6 @@
 package org.hiast.batch.application.port.out;
 
-import org.hiast.batch.domain.model.MovieMetaData;
+import org.hiast.model.MovieMetaData;
 
 import java.util.List;
 import java.util.Map;

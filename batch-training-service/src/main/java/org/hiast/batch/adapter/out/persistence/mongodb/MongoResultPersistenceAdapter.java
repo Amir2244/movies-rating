@@ -15,8 +15,8 @@ import com.mongodb.client.model.BulkWriteOptions;
 import org.bson.Document;
 import org.hiast.batch.application.port.out.ResultPersistencePort;
 import org.hiast.batch.config.MongoConfig;
-import org.hiast.batch.domain.model.MovieRecommendation;
-import org.hiast.batch.domain.model.UserRecommendations;
+import org.hiast.model.MovieRecommendation;
+import org.hiast.model.UserRecommendations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,7 +160,7 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
                     Document document = convertToDocument(userRecs);
                     ReplaceOptions options = new ReplaceOptions().upsert(true);
                     currentBatch.add(new ReplaceOneModel<>(
-                            Filters.eq("userId", userRecs.getUserId()),
+                            Filters.eq("userId", userRecs.getUserId().getUserId()),
                             document,
                             options
                     ));
@@ -179,7 +179,7 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
                     }
                 } catch (Exception e) {
                     log.error("Error preparing recommendations for user {}: {}",
-                            userRecs != null ? userRecs.getUserId() : "unknown", e.getMessage());
+                            userRecs != null ? userRecs.getUserId().getUserId() : "unknown", e.getMessage());
                 }
             }
 
@@ -376,7 +376,7 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
         }
 
         Document document = new Document();
-        document.append("userId", userRecs.getUserId());
+        document.append("userId", userRecs.getUserId().getUserId());
         document.append("generatedAt", Date.from(userRecs.getGeneratedAt()));
         document.append("modelVersion", userRecs.getModelVersion());
 
@@ -385,8 +385,8 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
             for (MovieRecommendation rec : userRecs.getRecommendations()) {
                 if (rec != null) {
                     Document recDoc = new Document()
-                            .append("movieId", rec.getMovieId())
-                            .append("rating", rec.getRating())
+                            .append("movieId", rec.getMovieId().getMovieId())
+                            .append("rating", rec.getPredictedRating())
                             .append("generatedAt", Date.from(rec.getGeneratedAt()));
 
                     // Add movie metadata if available

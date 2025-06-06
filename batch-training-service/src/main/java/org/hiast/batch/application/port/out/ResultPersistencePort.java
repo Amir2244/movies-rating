@@ -1,6 +1,6 @@
 package org.hiast.batch.application.port.out;
 
-import org.hiast.batch.domain.model.UserRecommendations;
+import org.hiast.model.UserRecommendations;
 
 import java.io.Serializable;
 import java.util.List;

@@ -9,9 +9,11 @@ import org.hiast.batch.application.pipeline.Filter;
 import org.hiast.batch.application.port.out.MovieMetaDataPort;
 import org.hiast.batch.application.port.out.ResultPersistencePort;
 import org.hiast.batch.domain.exception.ModelPersistenceException;
-import org.hiast.batch.domain.model.MovieMetaData;
-import org.hiast.batch.domain.model.MovieRecommendation;
-import org.hiast.batch.domain.model.UserRecommendations;
+import org.hiast.ids.MovieId;
+import org.hiast.ids.UserId;
+import org.hiast.model.MovieMetaData;
+import org.hiast.model.MovieRecommendation;
+import org.hiast.model.UserRecommendations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,18 +150,18 @@ public class MovieMetaDataEnrichmentFilter implements Filter<ALSTrainingPipeline
                 
                 if (metaData != null) {
                     // Create recommendation with movie metadata
-                    movieRec = new MovieRecommendation(userId, movieId, rating, now, 
+                    movieRec = new MovieRecommendation(UserId.of(userId), MovieId.of( movieId), rating, now,
                                                     metaData);
                 } else {
                     // Create recommendation without metadata
-                    movieRec = new MovieRecommendation(userId, movieId, rating, now);
+                    movieRec = new MovieRecommendation(UserId.of(userId), MovieId.of( movieId), rating, now);
                     log.debug("No metadata found for movie ID: {}", movieId);
                 }
                 
                 movieRecommendations.add(movieRec);
             }
 
-            UserRecommendations userRecs = new UserRecommendations(userId, movieRecommendations, now, modelVersion);
+            UserRecommendations userRecs = new UserRecommendations(UserId.of(userId), movieRecommendations, now, modelVersion);
             result.add(userRecs);
         }
 
