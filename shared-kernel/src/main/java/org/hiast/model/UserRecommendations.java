@@ -28,10 +28,10 @@ public final class UserRecommendations implements Serializable {
      * @param generatedAt     The timestamp when recommendations were generated.
      * @param modelVersion    The version of the model that generated recommendations.
      */
-    public UserRecommendations(UserId userId, 
-                              List<MovieRecommendation> recommendations,
-                              Instant generatedAt, 
-                              String modelVersion) {
+    public UserRecommendations(UserId userId,
+                               List<MovieRecommendation> recommendations,
+                               Instant generatedAt,
+                               String modelVersion) {
         this.userId = Objects.requireNonNull(userId, "userId cannot be null");
         this.recommendations = Objects.requireNonNull(recommendations, "recommendations cannot be null");
         this.generatedAt = Objects.requireNonNull(generatedAt, "generatedAt cannot be null");
@@ -42,15 +42,15 @@ public final class UserRecommendations implements Serializable {
      * Factory method for creating user recommendations from primitive user ID.
      * Useful for batch processing scenarios.
      */
-    public static UserRecommendations of(int userId, 
-                                       List<MovieRecommendation> recommendations,
-                                       Instant generatedAt, 
-                                       String modelVersion) {
+    public static UserRecommendations of(int userId,
+                                         List<MovieRecommendation> recommendations,
+                                         Instant generatedAt,
+                                         String modelVersion) {
         return new UserRecommendations(
-            UserId.of(userId),
-            recommendations,
-            generatedAt,
-            modelVersion
+                UserId.of(userId),
+                recommendations,
+                generatedAt,
+                modelVersion
         );
     }
 
@@ -109,4 +109,4 @@ public final class UserRecommendations implements Serializable {
                 ", modelVersion='" + modelVersion + '\'' +
                 '}';
     }
-} 
+}

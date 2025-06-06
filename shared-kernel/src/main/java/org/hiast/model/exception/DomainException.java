@@ -6,12 +6,12 @@ package org.hiast.model.exception;
  * all services in the movie recommendation system.
  */
 public abstract class DomainException extends RuntimeException {
-    
+
     protected DomainException(String message) {
         super(message);
     }
-    
+
     protected DomainException(String message, Throwable cause) {
         super(message, cause);
     }
-} 
+}

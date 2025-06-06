@@ -28,10 +28,10 @@ public final class MovieRecommendation implements Serializable {
      * @param predictedRating The predicted rating for this movie.
      * @param generatedAt     The timestamp when recommendation was generated.
      */
-    public MovieRecommendation(UserId userId, 
-                              MovieId movieId, 
-                              float predictedRating, 
-                              Instant generatedAt) {
+    public MovieRecommendation(UserId userId,
+                               MovieId movieId,
+                               float predictedRating,
+                               Instant generatedAt) {
         this.userId = Objects.requireNonNull(userId, "userId cannot be null");
         this.movieId = Objects.requireNonNull(movieId, "movieId cannot be null");
         this.predictedRating = predictedRating;
@@ -44,10 +44,10 @@ public final class MovieRecommendation implements Serializable {
      */
     public static MovieRecommendation of(int userId, int movieId, float rating, Instant generatedAt) {
         return new MovieRecommendation(
-            UserId.of(userId),
-            MovieId.of(movieId),
-            rating,
-            generatedAt
+                UserId.of(userId),
+                MovieId.of(movieId),
+                rating,
+                generatedAt
         );
     }
 
@@ -92,4 +92,4 @@ public final class MovieRecommendation implements Serializable {
                 ", generatedAt=" + generatedAt +
                 '}';
     }
-} 
+}
