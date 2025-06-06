@@ -1,6 +1,5 @@
 package org.hiast.recommendationsapi.application.port.out;
 
-import org.hiast.ids.UserId;
 import org.hiast.model.UserRecommendations;
 
 import java.util.List;
@@ -10,6 +9,7 @@ import java.util.Optional;
 /**
  * Output port for accessing recommendation data.
  * This defines the contract for data persistence operations.
+ * All methods use primitive int for user IDs for consistency with storage layer.
  */
 public interface RecommendationsRepositoryPort {
     
@@ -19,7 +19,7 @@ public interface RecommendationsRepositoryPort {
      * @param userId The user ID to search for.
      * @return Optional containing user recommendations if found, empty otherwise.
      */
-    Optional<UserRecommendations> findByUserId(UserId userId);
+    Optional<UserRecommendations> findByUserId(int userId);
     
     /**
      * Finds user recommendations by user ID with a limit on the number of recommendations.
@@ -28,7 +28,7 @@ public interface RecommendationsRepositoryPort {
      * @param limit  Maximum number of recommendations to return.
      * @return Optional containing user recommendations if found, empty otherwise.
      */
-    Optional<UserRecommendations> findByUserIdWithLimit(UserId userId, int limit);
+    Optional<UserRecommendations> findByUserIdWithLimit(int userId, int limit);
     
     /**
      * Checks if recommendations exist for a user.
@@ -36,7 +36,7 @@ public interface RecommendationsRepositoryPort {
      * @param userId The user ID to check.
      * @return true if recommendations exist, false otherwise.
      */
-    boolean existsByUserId(UserId userId);
+    boolean existsByUserId(int userId);
     
     /**
      * Finds recommendations for multiple users.
@@ -44,7 +44,7 @@ public interface RecommendationsRepositoryPort {
      * @param userIds The list of user IDs to search for.
      * @return Map of user ID to their recommendations (only includes users with recommendations).
      */
-    Map<UserId, UserRecommendations> findByUserIds(List<UserId> userIds);
+    Map<Integer, UserRecommendations> findByUserIds(List<Integer> userIds);
     
     /**
      * Finds limited recommendations for multiple users.
@@ -53,5 +53,5 @@ public interface RecommendationsRepositoryPort {
      * @param limit   Maximum number of recommendations per user.
      * @return Map of user ID to their recommendations (only includes users with recommendations).
      */
-    Map<UserId, UserRecommendations> findByUserIdsWithLimit(List<UserId> userIds, int limit);
+    Map<Integer, UserRecommendations> findByUserIdsWithLimit(List<Integer> userIds, int limit);
 }

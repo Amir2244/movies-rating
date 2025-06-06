@@ -1,6 +1,6 @@
 package org.hiast.recommendationsapi.adapter.out.persistence.mongodb;
 
-import org.hiast.ids.UserId;
+
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.document.UserRecommendationsDocument;
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.mapper.RecommendationsDomainMapper;
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.repository.UserRecommendationsMongoRepository;
@@ -43,13 +43,13 @@ public class MongoRecommendationsRepositoryAdapter implements RecommendationsRep
     }
     
     @Override
-    public Optional<UserRecommendations> findByUserId(UserId userId) {
+    public Optional<UserRecommendations> findByUserId(int userId) {
         Objects.requireNonNull(userId, "userId cannot be null");
         
         log.debug("Searching for recommendations for user: {}", userId);
         
         try {
-            Optional<UserRecommendationsDocument> documentOpt = mongoRepository.findByUserId(userId.getUserId());
+            Optional<UserRecommendationsDocument> documentOpt = mongoRepository.findByUserId(userId);
             
             if (documentOpt.isPresent()) {
                 UserRecommendations domain = domainMapper.toDomain(documentOpt.get());
@@ -67,7 +67,7 @@ public class MongoRecommendationsRepositoryAdapter implements RecommendationsRep
     }
     
     @Override
-    public Optional<UserRecommendations> findByUserIdWithLimit(UserId userId, int limit) {
+    public Optional<UserRecommendations> findByUserIdWithLimit(int userId, int limit) {
         Objects.requireNonNull(userId, "userId cannot be null");
         
         if (limit <= 0) {
@@ -77,7 +77,7 @@ public class MongoRecommendationsRepositoryAdapter implements RecommendationsRep
         log.debug("Searching for up to {} recommendations for user: {}", limit, userId);
         
         try {
-            Optional<UserRecommendationsDocument> documentOpt = mongoRepository.findByUserId(userId.getUserId());
+            Optional<UserRecommendationsDocument> documentOpt = mongoRepository.findByUserId(userId);
             
             if (documentOpt.isPresent()) {
                 UserRecommendations domain = domainMapper.toDomainWithLimit(documentOpt.get(), limit);
@@ -95,13 +95,15 @@ public class MongoRecommendationsRepositoryAdapter implements RecommendationsRep
     }
     
     @Override
-    public boolean existsByUserId(UserId userId) {
-        Objects.requireNonNull(userId, "userId cannot be null");
+    public boolean existsByUserId(int userId) {
+        if (userId <= 0) {
+            throw new IllegalArgumentException("User ID must be positive, but was: " + userId);
+        }
         
         log.debug("Checking if recommendations exist for user: {}", userId);
         
         try {
-            boolean exists = mongoRepository.existsByUserId(userId.getUserId());
+            boolean exists = mongoRepository.existsByUserId(userId);
             log.debug("Recommendations exist for user {}: {}", userId, exists);
             return exists;
         } catch (Exception e) {
@@ -111,21 +113,17 @@ public class MongoRecommendationsRepositoryAdapter implements RecommendationsRep
     }
     
     @Override
-    public Map<UserId, UserRecommendations> findByUserIds(List<UserId> userIds) {
+    public Map<Integer, UserRecommendations> findByUserIds(List<Integer> userIds) {
         Objects.requireNonNull(userIds, "userIds cannot be null");
         
         log.debug("Searching for recommendations for {} users", userIds.size());
         
         try {
-            List<Integer> intUserIds = userIds.stream()
-                .map(UserId::getUserId)
-                .collect(Collectors.toList());
+            List<UserRecommendationsDocument> documents = mongoRepository.findByUserIdIn(userIds);
             
-            List<UserRecommendationsDocument> documents = mongoRepository.findByUserIdIn(intUserIds);
-            
-            Map<UserId, UserRecommendations> result = new HashMap<>();
+            Map<Integer, UserRecommendations> result = new HashMap<>();
             for (UserRecommendationsDocument document : documents) {
-                UserId userId = UserId.of(document.getUserId());
+                Integer userId = document.getUserId();
                 UserRecommendations domain = domainMapper.toDomain(document);
                 result.put(userId, domain);
             }
@@ -140,7 +138,7 @@ public class MongoRecommendationsRepositoryAdapter implements RecommendationsRep
     }
     
     @Override
-    public Map<UserId, UserRecommendations> findByUserIdsWithLimit(List<UserId> userIds, int limit) {
+    public Map<Integer, UserRecommendations> findByUserIdsWithLimit(List<Integer> userIds, int limit) {
         Objects.requireNonNull(userIds, "userIds cannot be null");
         
         if (limit <= 0) {
@@ -150,15 +148,11 @@ public class MongoRecommendationsRepositoryAdapter implements RecommendationsRep
         log.debug("Searching for up to {} recommendations for {} users", limit, userIds.size());
         
         try {
-            List<Integer> intUserIds = userIds.stream()
-                .map(UserId::getUserId)
-                .collect(Collectors.toList());
+            List<UserRecommendationsDocument> documents = mongoRepository.findByUserIdIn(userIds);
             
-            List<UserRecommendationsDocument> documents = mongoRepository.findByUserIdIn(intUserIds);
-            
-            Map<UserId, UserRecommendations> result = new HashMap<>();
+            Map<Integer, UserRecommendations> result = new HashMap<>();
             for (UserRecommendationsDocument document : documents) {
-                UserId userId = UserId.of(document.getUserId());
+                Integer userId = document.getUserId();
                 UserRecommendations domain = domainMapper.toDomainWithLimit(document, limit);
                 result.put(userId, domain);
             }

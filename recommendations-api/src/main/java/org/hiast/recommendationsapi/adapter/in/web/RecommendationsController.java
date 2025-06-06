@@ -1,6 +1,5 @@
 package org.hiast.recommendationsapi.adapter.in.web;
 
-import org.hiast.ids.UserId;
 import org.hiast.recommendationsapi.adapter.in.web.response.UserRecommendationsResponse;
 import org.hiast.recommendationsapi.adapter.in.web.mapper.RecommendationsResponseMapper;
 import org.hiast.recommendationsapi.application.port.in.GetUserRecommendationsUseCase;
@@ -25,6 +24,7 @@ import java.util.stream.Stream;
  * REST controller for recommendations API endpoints.
  * This is the primary adapter in hexagonal architecture that handles
  * HTTP requests and delegates to the application layer.
+ * Uses primitive int for user IDs for consistency with storage layer.
  */
 @RestController
 @RequestMapping("/recommendations")
@@ -72,8 +72,7 @@ public class RecommendationsController {
                 return ResponseEntity.badRequest().build();
             }
             
-            UserId userIdObj = UserId.of(userId);
-            Optional<UserRecommendations> recommendations = getUserRecommendationsUseCase.getUserRecommendations(userIdObj);
+            Optional<UserRecommendations> recommendations = getUserRecommendationsUseCase.getUserRecommendations(userId);
             
             if (recommendations.isPresent()) {
                 UserRecommendationsResponse response = responseMapper.toResponse(recommendations.get());
@@ -121,9 +120,8 @@ public class RecommendationsController {
                 return ResponseEntity.badRequest().build();
             }
             
-            UserId userIdObj = UserId.of(userId);
             Optional<UserRecommendations> recommendations = 
-                getUserRecommendationsUseCase.getUserRecommendations(userIdObj, limit);
+                getUserRecommendationsUseCase.getUserRecommendations(userId, limit);
             
             if (recommendations.isPresent()) {
                 UserRecommendationsResponse response = responseMapper.toResponse(recommendations.get());
@@ -158,9 +156,9 @@ public class RecommendationsController {
         log.info("Received batch request for user IDs: {}", userIds);
         
         try {
-            List<UserId> userIdList = parseUserIds(userIds);
+            List<Integer> userIdList = parseUserIds(userIds);
             
-            Map<UserId, UserRecommendations> recommendations = 
+            Map<Integer, UserRecommendations> recommendations = 
                 getBatchUserRecommendationsUseCase.getBatchUserRecommendations(userIdList);
             
             Map<String, UserRecommendationsResponse> response = convertBatchResponse(recommendations);
@@ -192,9 +190,9 @@ public class RecommendationsController {
         log.info("Received batch request for top {} recommendations for user IDs: {}", limit, userIds);
         
         try {
-            List<UserId> userIdList = parseUserIds(userIds);
+            List<Integer> userIdList = parseUserIds(userIds);
             
-            Map<UserId, UserRecommendations> recommendations = 
+            Map<Integer, UserRecommendations> recommendations = 
                 getBatchUserRecommendationsUseCase.getBatchUserRecommendations(userIdList, limit);
             
             Map<String, UserRecommendationsResponse> response = convertBatchResponse(recommendations);
@@ -213,14 +211,13 @@ public class RecommendationsController {
     }
     
     /**
-     * Parses comma-separated user IDs string into a list of UserId objects.
+     * Parses comma-separated user IDs string into a list of Integer objects.
      */
-    private List<UserId> parseUserIds(String userIdsString) {
+    private List<Integer> parseUserIds(String userIdsString) {
         try {
             return Stream.of(userIdsString.split(","))
                 .map(String::trim)
                 .map(Integer::parseInt)
-                .map(UserId::of)
                 .collect(Collectors.toList());
         } catch (NumberFormatException e) {
             throw new InvalidRecommendationRequestException("Invalid user ID format: " + userIdsString);
@@ -231,10 +228,10 @@ public class RecommendationsController {
      * Converts batch domain results to response DTOs.
      */
     private Map<String, UserRecommendationsResponse> convertBatchResponse(
-            Map<UserId, UserRecommendations> recommendations) {
+            Map<Integer, UserRecommendations> recommendations) {
         Map<String, UserRecommendationsResponse> response = new HashMap<>();
-        for (Map.Entry<UserId, UserRecommendations> entry : recommendations.entrySet()) {
-            String userIdKey = String.valueOf(entry.getKey().getUserId());
+        for (Map.Entry<Integer, UserRecommendations> entry : recommendations.entrySet()) {
+            String userIdKey = String.valueOf(entry.getKey());
             UserRecommendationsResponse userResponse = responseMapper.toResponse(entry.getValue());
             response.put(userIdKey, userResponse);
         }

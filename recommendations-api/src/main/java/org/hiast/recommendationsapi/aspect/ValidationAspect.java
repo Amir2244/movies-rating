@@ -5,7 +5,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.hiast.ids.UserId;
+
 import org.hiast.recommendationsapi.aspect.annotation.Validated;
 import org.hiast.recommendationsapi.domain.exception.InvalidRecommendationRequestException;
 import org.slf4j.Logger;
@@ -93,13 +93,8 @@ public class ValidationAspect {
         Class<?> paramType = parameter.getType();
         String paramName = parameter.getName();
         
-        // Validate UserId
-        if (paramType == UserId.class) {
-            validateUserId((UserId) arg, paramName, methodName);
-        }
-        
         // Validate Integer (commonly used for limits, counts, etc.)
-        else if (paramType == Integer.class || paramType == int.class) {
+        if (paramType == Integer.class || paramType == int.class) {
             validateIntegerParameter((Integer) arg, paramName, methodName);
         }
         
@@ -116,13 +111,7 @@ public class ValidationAspect {
         // Add more validation rules as needed
     }
     
-    private void validateUserId(UserId userId, String paramName, String methodName) {
-        if (userId.getUserId() <= 0) {
-            throw new InvalidRecommendationRequestException(
-                String.format("User ID must be positive in parameter '%s' for method %s, but was: %d", 
-                    paramName, methodName, userId.getUserId()));
-        }
-    }
+
     
     private void validateIntegerParameter(Integer value, String paramName, String methodName) {
         // Common validations for integer parameters

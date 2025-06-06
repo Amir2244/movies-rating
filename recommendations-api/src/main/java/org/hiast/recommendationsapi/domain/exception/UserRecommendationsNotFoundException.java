@@ -1,20 +1,19 @@
 package org.hiast.recommendationsapi.domain.exception;
 
-import org.hiast.ids.UserId;
-
 /**
  * Domain exception thrown when user recommendations are not found.
+ * Uses primitive int for user ID for consistency with storage layer.
  */
 public class UserRecommendationsNotFoundException extends RecommendationException {
     
-    private final UserId userId;
+    private final int userId;
     
-    public UserRecommendationsNotFoundException(UserId userId) {
+    public UserRecommendationsNotFoundException(int userId) {
         super("No recommendations found for user: " + userId);
         this.userId = userId;
     }
     
-    public UserId getUserId() {
+    public int getUserId() {
         return userId;
     }
 } 

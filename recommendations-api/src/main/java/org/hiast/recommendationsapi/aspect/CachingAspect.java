@@ -14,9 +14,6 @@ import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Aspect for handling custom @Cacheable annotation with enhanced features.
@@ -27,15 +24,12 @@ import java.util.concurrent.TimeUnit;
 public class CachingAspect {
     
     private static final Logger log = LoggerFactory.getLogger(CachingAspect.class);
-    
-    private final CacheManager primaryCacheManager;
+
     private final CacheManager localCacheManager;
     private final MeterRegistry meterRegistry;
     
-    public CachingAspect(@Qualifier("redisCacheManager") CacheManager primaryCacheManager, 
-                        @Qualifier("localCacheManager") CacheManager localCacheManager,
+    public CachingAspect(@Qualifier("caffeineCacheManager") CacheManager localCacheManager,
                         MeterRegistry meterRegistry) {
-        this.primaryCacheManager = primaryCacheManager;
         this.localCacheManager = localCacheManager;
         this.meterRegistry = meterRegistry;
     }
@@ -62,9 +56,9 @@ public class CachingAspect {
             log.debug("Cache condition not met for method: {}", methodName);
             return joinPoint.proceed();
         }
-        
+
         // Try to get from primary cache
-        Object cachedResult = getFromPrimaryCache(primaryCacheName, cacheKey, methodName);
+        Object cachedResult = null;
         if (cachedResult != null) {
             recordCacheHit(methodName, primaryCacheName, "primary");
             return cachedResult;
@@ -85,8 +79,6 @@ public class CachingAspect {
         
         // Check unless condition
         if (!evaluateUnlessCondition(cacheable.unless(), joinPoint, result)) {
-            // Store in caches
-            storeInPrimaryCache(primaryCacheName, cacheKey, result, cacheable, methodName);
             if (cacheable.useLocalFallback()) {
                 storeInLocalCache(primaryCacheName, cacheKey, result, cacheable, methodName);
             }
@@ -136,22 +128,7 @@ public class CachingAspect {
         // For now, always return false. Implement SpEL evaluation as needed
         return false;
     }
-    
-    private Object getFromPrimaryCache(String cacheName, String key, String methodName) {
-        try {
-            Cache cache = primaryCacheManager.getCache(cacheName);
-            if (cache != null) {
-                Cache.ValueWrapper wrapper = cache.get(key);
-                if (wrapper != null) {
-                    log.debug("Cache hit in primary cache for method: {}, key: {}", methodName, key);
-                    return wrapper.get();
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error accessing primary cache for method: {}, key: {}", methodName, key, e);
-        }
-        return null;
-    }
+
     
     private Object getFromLocalCache(String cacheName, String key, String methodName) {
         try {
@@ -169,19 +146,7 @@ public class CachingAspect {
         return null;
     }
     
-    private void storeInPrimaryCache(String cacheName, String key, Object value, 
-                                   Cacheable cacheable, String methodName) {
-        try {
-            Cache cache = primaryCacheManager.getCache(cacheName);
-            if (cache != null) {
-                cache.put(key, value);
-                log.debug("Stored in primary cache for method: {}, key: {}", methodName, key);
-            }
-        } catch (Exception e) {
-            log.warn("Error storing in primary cache for method: {}, key: {}", methodName, key, e);
-        }
-    }
-    
+
     private void storeInLocalCache(String cacheName, String key, Object value, 
                                  Cacheable cacheable, String methodName) {
         try {

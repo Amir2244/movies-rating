@@ -1,6 +1,5 @@
 package org.hiast.recommendationsapi.application.port.in;
 
-import org.hiast.ids.UserId;
 import org.hiast.model.UserRecommendations;
 
 import java.util.Optional;
@@ -8,6 +7,7 @@ import java.util.Optional;
 /**
  * Input port (use case) for retrieving user recommendations.
  * This defines the contract for the primary business operation.
+ * Uses primitive int for user IDs for consistency with storage layer.
  */
 public interface GetUserRecommendationsUseCase {
     
@@ -17,7 +17,7 @@ public interface GetUserRecommendationsUseCase {
      * @param userId The user ID to get recommendations for.
      * @return Optional containing user recommendations if found, empty otherwise.
      */
-    Optional<UserRecommendations> getUserRecommendations(UserId userId);
+    Optional<UserRecommendations> getUserRecommendations(int userId);
     
     /**
      * Retrieves recommendations for a specific user with a limit.
@@ -26,5 +26,5 @@ public interface GetUserRecommendationsUseCase {
      * @param limit  Maximum number of recommendations to return.
      * @return Optional containing user recommendations if found, empty otherwise.
      */
-    Optional<UserRecommendations> getUserRecommendations(UserId userId, int limit);
+    Optional<UserRecommendations> getUserRecommendations(int userId, int limit);
 }
