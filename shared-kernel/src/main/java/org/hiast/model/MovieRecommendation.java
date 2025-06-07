@@ -40,6 +40,14 @@ public final class MovieRecommendation implements Serializable {
         this.movieMetaData = movieMetaData;
     }
 
+    public MovieRecommendation(UserId userId, MovieId movieId, float predictedRating, Instant generatedAt) {
+        this.userId = userId;
+        this.movieId = movieId;
+        this.predictedRating = predictedRating;
+        this.generatedAt = generatedAt;
+        movieMetaData=null;
+    }
+
     /**
      * Factory method for creating recommendations from primitive values.
      * Useful for batch processing scenarios.
