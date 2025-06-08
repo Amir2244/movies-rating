@@ -22,6 +22,7 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="movies-rating" target="24" />
+      <module name="recommendations-api" target="17" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
