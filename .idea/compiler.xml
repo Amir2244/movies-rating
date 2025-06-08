@@ -7,7 +7,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="shared-kernel" />
-        <module name="batch-training-service" />
+        <module name="batch-processing-service" />
       </profile>
       <profile name="Annotation profile for recommendations-api" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -21,7 +21,6 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="batch-processing-service" target="1.8" />
       <module name="movies-rating" target="24" />
     </bytecodeTargetLevel>
   </component>
