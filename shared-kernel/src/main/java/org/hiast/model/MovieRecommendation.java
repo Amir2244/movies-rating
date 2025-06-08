@@ -5,6 +5,7 @@ import org.hiast.ids.UserId;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -19,7 +20,7 @@ public final class MovieRecommendation implements Serializable {
     private final MovieId movieId;
     private final float predictedRating;
     private final Instant generatedAt;
-
+    private final MovieMetaData movieMetaData;
     /**
      * Constructor for MovieRecommendation.
      *
@@ -31,23 +32,25 @@ public final class MovieRecommendation implements Serializable {
     public MovieRecommendation(UserId userId,
                                MovieId movieId,
                                float predictedRating,
-                               Instant generatedAt) {
+                               Instant generatedAt, MovieMetaData movieMetaData) {
         this.userId = Objects.requireNonNull(userId, "userId cannot be null");
         this.movieId = Objects.requireNonNull(movieId, "movieId cannot be null");
         this.predictedRating = predictedRating;
         this.generatedAt = Objects.requireNonNull(generatedAt, "generatedAt cannot be null");
+        this.movieMetaData = movieMetaData;
     }
 
     /**
      * Factory method for creating recommendations from primitive values.
      * Useful for batch processing scenarios.
      */
-    public static MovieRecommendation of(int userId, int movieId, float rating, Instant generatedAt) {
+    public static MovieRecommendation of(int userId, int movieId, float rating, Instant generatedAt,MovieMetaData metaData) {
         return new MovieRecommendation(
                 UserId.of(userId),
                 MovieId.of(movieId),
                 rating,
-                generatedAt
+                generatedAt,
+                metaData
         );
     }
 
@@ -65,6 +68,13 @@ public final class MovieRecommendation implements Serializable {
 
     public Instant getGeneratedAt() {
         return generatedAt;
+    }
+    public String getMovieTitle() {
+        return movieMetaData != null ? movieMetaData.getTitle() : null;
+    }
+
+    public List<String> getMovieGenres() {
+        return movieMetaData != null ? movieMetaData.getGenres() : null;
     }
 
     @Override
