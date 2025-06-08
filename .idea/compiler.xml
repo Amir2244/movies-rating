@@ -21,8 +21,8 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="batch-processing-service" target="1.8" />
       <module name="movies-rating" target="24" />
-      <module name="recommendations-api" target="17" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
