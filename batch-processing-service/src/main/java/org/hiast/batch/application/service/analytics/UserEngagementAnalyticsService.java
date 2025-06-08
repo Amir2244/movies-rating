@@ -6,15 +6,14 @@ import org.apache.spark.sql.functions;
 import org.apache.spark.storage.StorageLevel;
 // import org.hiast.batch.application.pipeline.BasePipelineContext; // Not used
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
-import org.hiast.batch.domain.model.AnalyticsType;
-import org.hiast.batch.domain.model.DataAnalytics;
-import org.hiast.batch.domain.model.analytics.AnalyticsMetrics;
+import org.hiast.model.AnalyticsType;
+import org.hiast.model.DataAnalytics;
+import org.hiast.model.analytics.AnalyticsMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList; // Import ArrayList
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 

@@ -1,7 +1,7 @@
 package org.hiast.batch.application.pipeline;
 
 import org.apache.spark.sql.SparkSession;
-import org.hiast.batch.domain.model.DataAnalytics;
+import org.hiast.model.DataAnalytics;
 
 import java.util.ArrayList;
 import java.util.List;

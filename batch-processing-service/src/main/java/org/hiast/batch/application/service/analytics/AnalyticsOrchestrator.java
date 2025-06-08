@@ -5,16 +5,13 @@ import org.apache.spark.sql.Row;
 import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
-import org.hiast.batch.domain.model.DataAnalytics;
 import org.hiast.batch.application.service.factory.AnalyticsCollectorFactory;
+import org.hiast.model.DataAnalytics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**

@@ -3,11 +3,10 @@ package org.hiast.batch.application.service.analytics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.functions;
-import org.hiast.batch.application.pipeline.BasePipelineContext;
 import org.hiast.batch.domain.exception.AnalyticsCollectionException;
-import org.hiast.batch.domain.model.AnalyticsType;
-import org.hiast.batch.domain.model.DataAnalytics;
-import org.hiast.batch.domain.model.analytics.AnalyticsMetrics;
+import org.hiast.model.AnalyticsType;
+import org.hiast.model.DataAnalytics;
+import org.hiast.model.analytics.AnalyticsMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

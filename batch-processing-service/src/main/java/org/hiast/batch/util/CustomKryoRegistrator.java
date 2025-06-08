@@ -6,10 +6,7 @@ import org.hiast.batch.domain.model.ModelFactors;
 import org.hiast.batch.domain.model.ProcessedRating;
 import org.hiast.ids.MovieId;
 import org.hiast.ids.UserId;
-import org.hiast.model.MovieMetaData;
-import org.hiast.model.MovieRecommendation;
-import org.hiast.model.RatingValue;
-import org.hiast.model.UserRecommendations;
+import org.hiast.model.*;
 import org.hiast.model.factors.ItemFactor;
 import org.hiast.model.factors.UserFactor;
 import org.slf4j.Logger;
@@ -45,7 +42,7 @@ public class CustomKryoRegistrator implements KryoRegistrator {
         kryo.register(java.util.HashMap.class);
         kryo.register(java.util.ArrayList.class);
         kryo.register(MovieMetaData.class);
-        kryo.register(org.hiast.batch.domain.model.DataAnalytics.class);
+        kryo.register(DataAnalytics.class);
         // Register Java classes used in the application
         kryo.register(ArrayList.class);
         kryo.register(HashMap.class);
