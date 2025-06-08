@@ -3,6 +3,7 @@ package org.hiast.recommendationsapi.adapter.out.persistence.mongodb.document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -20,6 +21,12 @@ public class MovieRecommendationDocument {
     @Field("generatedAt")
     private Instant generatedAt;
     
+    @Field("movieTitle")
+    private String title;
+    
+    @Field("movieGenres")
+    private List<String> genres;
+    
     /**
      * Default constructor for MongoDB.
      */
@@ -33,6 +40,18 @@ public class MovieRecommendationDocument {
         this.movieId = movieId;
         this.rating = rating;
         this.generatedAt = generatedAt;
+    }
+    
+    /**
+     * Constructor for creating document instances with movie metadata.
+     */
+    public MovieRecommendationDocument(int movieId, float rating, Instant generatedAt, 
+                                     String title, List<String> genres) {
+        this.movieId = movieId;
+        this.rating = rating;
+        this.generatedAt = generatedAt;
+        this.title = title;
+        this.genres = genres;
     }
     
     public int getMovieId() {
@@ -59,6 +78,22 @@ public class MovieRecommendationDocument {
         this.generatedAt = generatedAt;
     }
     
+    public String getTitle() {
+        return title;
+    }
+    
+    public void setTitle(String title) {
+        this.title = title;
+    }
+    
+    public List<String> getGenres() {
+        return genres;
+    }
+    
+    public void setGenres(List<String> genres) {
+        this.genres = genres;
+    }
+    
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -66,12 +101,14 @@ public class MovieRecommendationDocument {
         MovieRecommendationDocument that = (MovieRecommendationDocument) o;
         return movieId == that.movieId &&
                 Float.compare(that.rating, rating) == 0 &&
-                Objects.equals(generatedAt, that.generatedAt);
+                Objects.equals(generatedAt, that.generatedAt) &&
+                Objects.equals(title, that.title) &&
+                Objects.equals(genres, that.genres);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(movieId, rating, generatedAt);
+        return Objects.hash(movieId, rating, generatedAt, title, genres);
     }
     
     @Override
@@ -80,6 +117,8 @@ public class MovieRecommendationDocument {
                 "movieId=" + movieId +
                 ", rating=" + rating +
                 ", generatedAt=" + generatedAt +
+                ", title='" + title + '\'' +
+                ", genres=" + genres +
                 '}';
     }
 }
