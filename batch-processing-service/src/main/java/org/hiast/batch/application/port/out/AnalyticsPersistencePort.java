@@ -1,6 +1,6 @@
 package org.hiast.batch.application.port.out;
 
-import org.hiast.batch.domain.model.DataAnalytics;
+import org.hiast.model.DataAnalytics;
 
 /**
  * Output Port defining how to persist analytics data.

@@ -4,7 +4,7 @@ import org.hiast.batch.application.pipeline.AnalyticsPipelineContext;
 import org.hiast.batch.application.pipeline.Filter;
 import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
 import org.hiast.batch.application.service.analytics.*;
-import org.hiast.batch.domain.model.DataAnalytics;
+import org.hiast.model.DataAnalytics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
