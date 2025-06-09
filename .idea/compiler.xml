@@ -9,7 +9,7 @@
         <module name="shared-kernel" />
         <module name="batch-processing-service" />
       </profile>
-      <profile name="Annotation profile for recommendations-api" enabled="true">
+      <profile name="Annotation profile for analytics-api" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -17,6 +17,7 @@
           <entry name="$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-configuration-processor/3.5.0/spring-boot-configuration-processor-3.5.0.jar" />
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
         </processorPath>
+        <module name="analytics-api" />
         <module name="recommendations-api" />
       </profile>
     </annotationProcessing>
@@ -26,6 +27,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="analytics-api" options="-parameters" />
       <module name="recommendations-api" options="-parameters" />
     </option>
   </component>
