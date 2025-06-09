@@ -155,7 +155,7 @@
     </dependencies>
 
     <build>
-        <finalName>batch-training-service</finalName>
+        <finalName>batch-processing-service</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
