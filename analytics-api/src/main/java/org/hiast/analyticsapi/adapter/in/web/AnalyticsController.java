@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * Provides HTTP API for querying analytics data.
  */
 @RestController
-@RequestMapping("/api/v1/analytics")
+@RequestMapping("/analytics")
 @CrossOrigin(origins = "*")
 public class AnalyticsController {
 
