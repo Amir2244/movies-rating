@@ -16,6 +16,9 @@ on:
   pull_request:
     branches: [ "dev" ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
 
@@ -54,7 +57,7 @@ jobs:
           name: shared-kernel-jar
           path: shared-kernel/target/*.jar
 
-      - name: Upload batch-training-service JAR
+      - name: Upload batch-processing-service JAR
         uses: actions/upload-artifact@v4
         with:
           name: batch-processing-service-jar
