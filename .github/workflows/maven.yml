@@ -31,6 +31,8 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
           cache: maven
+      - name: Build shared-kernel
+        run: mvn -B clean install --file shared-kernel/pom.xml
       - name: Build batch-processing-service
         run: mvn -B clean package --file batch-processing-service/pom.xml
 
@@ -41,8 +43,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: maven
-      - name: Build shared-kernel
-        run: mvn -B clean install --file shared-kernel/pom.xml
       - name: Build recommendations-api
         run: mvn -B clean package --file recommendations-api/pom.xml
       - name: Build analytics-api
