@@ -1,4 +1,4 @@
-package org.hiast.batch.domain.model;
+package org.hiast.model;
 
 /**
  * Comprehensive types of analytics data that can be stored and tracked.

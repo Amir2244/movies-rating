@@ -5,6 +5,7 @@ import org.hiast.ids.UserId;
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.document.MovieRecommendationDocument;
 import org.hiast.recommendationsapi.adapter.out.persistence.mongodb.document.UserRecommendationsDocument;
 import org.hiast.model.MovieRecommendation;
+import org.hiast.model.MovieMetaData;
 import org.hiast.model.UserRecommendations;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +35,7 @@ public class RecommendationsDomainMapper {
         
         List<MovieRecommendation> recommendations = document.getRecommendations()
                 .stream()
-                .map(this::toDomain)
+                .map(recDoc -> toDomainWithUserId(recDoc, userId))
                 .collect(Collectors.toList());
         
         return new UserRecommendations(
@@ -61,11 +62,15 @@ public class RecommendationsDomainMapper {
         UserId userId = UserId.of(1); // This will be overridden
         MovieId movieId = MovieId.of(document.getMovieId());
         
+        // Create MovieMetaData from document fields
+        MovieMetaData movieMetaData = new MovieMetaData(movieId, document.getTitle(), document.getGenres());
+        
         return new MovieRecommendation(
                 userId,
                 movieId,
                 document.getRating(),
-                document.getGeneratedAt()
+                document.getGeneratedAt(),
+                movieMetaData
         );
     }
     
@@ -111,11 +116,15 @@ public class RecommendationsDomainMapper {
         
         MovieId movieId = MovieId.of(document.getMovieId());
         
+        // Create MovieMetaData from document fields
+        MovieMetaData movieMetaData = new MovieMetaData(movieId, document.getTitle(), document.getGenres());
+        
         return new MovieRecommendation(
                 userId,
                 movieId,
                 document.getRating(),
-                document.getGeneratedAt()
+                document.getGeneratedAt(),
+                movieMetaData
         );
     }
 }

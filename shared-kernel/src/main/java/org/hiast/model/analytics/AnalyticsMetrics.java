@@ -1,4 +1,4 @@
-package org.hiast.batch.domain.model.analytics;
+package org.hiast.model.analytics;
 
 import java.util.HashMap;
 import java.util.Map;

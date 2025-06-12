@@ -1,4 +1,5 @@
-package org.hiast.batch.domain.model;
+package org.hiast.model;
+
 
 import java.io.Serializable;
 import java.time.Instant;

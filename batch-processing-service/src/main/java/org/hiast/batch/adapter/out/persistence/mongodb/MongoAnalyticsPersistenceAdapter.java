@@ -9,7 +9,7 @@ import com.mongodb.client.model.ReplaceOptions;
 import org.bson.Document;
 import org.hiast.batch.application.port.out.AnalyticsPersistencePort;
 import org.hiast.batch.config.MongoConfig;
-import org.hiast.batch.domain.model.DataAnalytics;
+import org.hiast.model.DataAnalytics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

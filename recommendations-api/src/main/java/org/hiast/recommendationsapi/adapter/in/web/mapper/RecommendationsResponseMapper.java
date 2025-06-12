@@ -55,7 +55,9 @@ public class RecommendationsResponseMapper {
         return new MovieRecommendationResponse(
                 domain.getMovieId().getMovieId(),
                 domain.getPredictedRating(),
-                domain.getGeneratedAt()
+                domain.getGeneratedAt(),
+                domain.getMovieTitle(),
+                domain.getMovieGenres()
         );
     }
 }

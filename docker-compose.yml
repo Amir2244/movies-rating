@@ -1,6 +1,6 @@
 services:
   namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    image: bde2020/hadoop-namenode
     container_name: namenode
     environment:
       - CLUSTER_NAME=test
@@ -14,7 +14,7 @@ services:
       - app-network
 
   datanode:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    image: bde2020/hadoop-datanode
     container_name: datanode
     environment:
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
@@ -35,9 +35,9 @@ services:
     ports:
       - "8080:8080"
       - "7077:7077"
-    mem_limit: 6g
+    mem_limit: 4g
     volumes:
-      - ./batch-training-service/target/batch-training-service.jar:/opt/spark-apps/batch-training-service.jar
+      - ./batch-processing-service/target/batch-processing-service.jar:/opt/spark-apps/batch-processing-service.jar
       - ./docker-volumes/spark_master_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_master_spark_logs:/opt/spark/logs
     networks:
@@ -51,7 +51,7 @@ services:
       - SPARK_WORKER_CORES=6
       - SPARK_WORKER_MEMORY=6g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
-    mem_limit: 7g
+    mem_limit: 3g
     volumes:
       - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
@@ -69,7 +69,7 @@ services:
       - SPARK_WORKER_CORES=6
       - SPARK_WORKER_MEMORY=6g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
-    mem_limit: 7g
+    mem_limit: 3g
     volumes:
       - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
