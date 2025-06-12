@@ -23,16 +23,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 8
+
+      # Build batch-processing-service with Java 8
+      - name: Set up JDK 8 for batch-processing-service
         uses: actions/setup-java@v4
         with:
           java-version: '8'
           distribution: 'temurin'
           cache: maven
-      - name: Build shared-kernel
-        run: mvn -B clean install --file shared-kernel/pom.xml
       - name: Build batch-processing-service
         run: mvn -B clean package --file batch-processing-service/pom.xml
+
+      # Switch to Java 17 for the rest
+      - name: Set up JDK 17 for Spring services
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build shared-kernel
+        run: mvn -B clean install --file shared-kernel/pom.xml
       - name: Build recommendations-api
         run: mvn -B clean package --file recommendations-api/pom.xml
       - name: Build analytics-api
