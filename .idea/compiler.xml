@@ -9,7 +9,7 @@
         <module name="shared-kernel" />
         <module name="batch-processing-service" />
       </profile>
-      <profile name="Annotation profile for analytics-api" enabled="true">
+      <profile name="Annotation profile for recommendations-api" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
