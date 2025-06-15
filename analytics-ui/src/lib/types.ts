@@ -4,13 +4,21 @@
  */
 
 export interface AnalyticsDocument {
-    _id: { $oid: string };
     analyticsId: string;
-    generatedAt: { $date: string };
+    generatedAt: string;
     type: string;
-    description: string;
     metrics: Record<string, any>;
+    description: string;
 }
+
+export interface AnalyticsResponse {
+    analytics: AnalyticsDocument[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+}
+
 export interface RatingChartData {
     rating: string;
     count: number;
