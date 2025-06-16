@@ -1,7 +1,7 @@
 package org.hiast.batch.adapter.out.memory.redis.util;
 
-import org.hiast.batch.util.VectorMetadata;
-import org.hiast.batch.util.VectorSerializationUtil;
+import org.hiast.util.VectorMetadata;
+import org.hiast.util.VectorSerializationUtil;
 import org.junit.Test;
 
 import java.time.Instant;
