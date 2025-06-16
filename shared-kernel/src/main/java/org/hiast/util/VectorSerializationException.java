@@ -1,4 +1,4 @@
-package org.hiast.batch.util;
+package org.hiast.util;
 
 /**
  * Exception thrown when vector serialization or deserialization operations fail.

@@ -1,4 +1,4 @@
-package org.hiast.batch.util;
+package org.hiast.util;
 
 import java.time.Instant;
 import java.util.Objects;
