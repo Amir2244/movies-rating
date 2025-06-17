@@ -93,7 +93,7 @@ services:
     env_file:
       - ./redis-config/redis.env
     volumes:
-      - ./docker-volumes/redis_data:/data
+      - ./docker-volumes/redis_data:/var/lib/redis-stack
       - ./redis-config:/usr/local/etc/redis-config:ro
     command: >
       redis-stack-server
