@@ -9,7 +9,6 @@
         <outputRelativeToContentRoot value="true" />
         <module name="shared-kernel" />
         <module name="batch-processing-service" />
-        <module name="real-time-service" />
       </profile>
       <profile name="Annotation profile for recommendations-api" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -25,6 +24,7 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="movies-rating" target="24" />
+      <module name="real-time-service" target="11" />
       <module name="test" target="1.8" />
     </bytecodeTargetLevel>
   </component>
