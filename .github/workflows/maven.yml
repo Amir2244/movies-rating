@@ -1,0 +1,124 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ "master" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build batch-processing-service with Java 8
+      - name: Set up JDK 8 for batch-processing-service
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build shared-kernel
+        run: mvn -B clean install --file shared-kernel/pom.xml
+      - name: Build batch-processing-service
+        run: mvn -B clean package --file batch-processing-service/pom.xml
+      - name: Build real-time-service
+        run: mvn -B clean package --file real-time-service/pom.xml
+
+      # Switch to Java 17 for the rest
+      - name: Set up JDK 17 for Spring services
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build recommendations-api
+        run: mvn -B clean package --file recommendations-api/pom.xml
+      - name: Build analytics-api
+        run: mvn -B clean package --file analytics-api/pom.xml
+
+      - name: Upload shared-kernel JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: shared-kernel-jar
+          path: shared-kernel/target/*.jar
+
+      - name: Upload batch-processing-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: batch-processing-service-jar
+          path: batch-processing-service/target/batch-processing-service.jar
+
+      - name: Upload real-time-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-time-service-jar
+          path: real-time-service/target/real-time-service-1.0-SNAPSHOT.jar
+      - name: Upload recommendations-api WAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: recommendations-api-war
+          path: recommendations-api/target/*.war
+
+      - name: Upload analytics-api WAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: analytics-api-war
+          path: analytics-api/target/*.war
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download shared-kernel JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: shared-kernel-jar
+          path: ./artifacts/
+
+      - name: Download batch-processing-service JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: batch-processing-service-jar
+          path: ./artifacts/
+
+      - name: Download recommendations-api WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: recommendations-api-war
+          path: ./artifacts/
+
+      - name: Download analytics-api WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: analytics-api-war
+          path: ./artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./artifacts/*.jar
+            ./artifacts/*.war
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
