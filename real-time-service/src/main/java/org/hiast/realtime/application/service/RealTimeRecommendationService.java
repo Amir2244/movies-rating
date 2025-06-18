@@ -42,14 +42,14 @@ public class RealTimeRecommendationService implements ProcessInteractionEventUse
 
         LOG.info("Processing event for user: {}", event.getUserId().getUserId());
 
-        Optional<UserFactor> userFactorOpt = userFactorPort.findUserFactorById(event.getUserId());
+        Optional<UserFactor<float[]>> userFactorOpt = userFactorPort.findUserFactorById(event.getUserId());
 
         if (userFactorOpt.isEmpty()) {
             LOG.warn("Could not find user factor for user: {}", event.getUserId().getUserId());
             return;
         }
 
-        UserFactor userFactor = userFactorOpt.get();
+        UserFactor<float[]> userFactor = userFactorOpt.get();
         List<MovieRecommendation> recommendations = vectorSearchPort.findSimilarItems(userFactor, TOP_N_RECOMMENDATIONS);
 
         if (recommendations.isEmpty()) {
