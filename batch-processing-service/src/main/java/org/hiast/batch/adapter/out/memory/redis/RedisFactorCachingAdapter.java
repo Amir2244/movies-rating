@@ -432,7 +432,7 @@ public class RedisFactorCachingAdapter implements FactorCachingPort, AutoCloseab
             fields.put(VectorSerializationUtil.ENTITY_ID_FIELD, String.valueOf(userId));
             fields.put(VectorSerializationUtil.ENTITY_TYPE_FIELD, VectorSerializationUtil.USER_ENTITY_TYPE);
             fields.put(VectorSerializationUtil.DIMENSION_FIELD, String.valueOf(vector.length));
-            fields.put(VectorSerializationUtil.TIMESTAMP_FIELD, metadata.getTimestamp().toString());
+            fields.put(VectorSerializationUtil.TIMESTAMP_FIELD, String.valueOf(metadata.getTimestamp().toEpochMilli()));
 
             pipeline.hset(redisKey, fields);
             pipeline.hset(redisKey.getBytes(), VectorSerializationUtil.VECTOR_FIELD.getBytes(), vectorBytes);
@@ -458,7 +458,7 @@ public class RedisFactorCachingAdapter implements FactorCachingPort, AutoCloseab
             fields.put(VectorSerializationUtil.ENTITY_ID_FIELD, String.valueOf(itemId));
             fields.put(VectorSerializationUtil.ENTITY_TYPE_FIELD, VectorSerializationUtil.ITEM_ENTITY_TYPE);
             fields.put(VectorSerializationUtil.DIMENSION_FIELD, String.valueOf(vector.length));
-            fields.put(VectorSerializationUtil.TIMESTAMP_FIELD, metadata.getTimestamp().toString());
+            fields.put(VectorSerializationUtil.TIMESTAMP_FIELD, String.valueOf(metadata.getTimestamp().toEpochMilli()));
 
             pipeline.hset(redisKey, fields);
             pipeline.hset(redisKey.getBytes(), VectorSerializationUtil.VECTOR_FIELD.getBytes(), vectorBytes);
