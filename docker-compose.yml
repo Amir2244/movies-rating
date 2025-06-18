@@ -1,3 +1,6 @@
+# Corrected docker-compose.yml
+version: "3.8"
+
 services:
   namenode:
     image: bde2020/hadoop-namenode
@@ -6,8 +9,8 @@ services:
       - CLUSTER_NAME=test
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
     ports:
-      - "9870:9870"   # HDFS Web UI
-      - "8020:8020"   # HDFS RPC
+      - "9870:9870"
+      - "8020:8020"
     volumes:
       - ./docker-volumes/namenode_data:/hadoop/dfs/name
     networks:
@@ -35,7 +38,6 @@ services:
     ports:
       - "8080:8080"
       - "7077:7077"
-    mem_limit: 4g
     volumes:
       - ./batch-processing-service/target/batch-processing-service.jar:/opt/spark-apps/batch-processing-service.jar
       - ./docker-volumes/spark_master_app_logs:/opt/spark-apps/logs
@@ -51,16 +53,16 @@ services:
       - SPARK_WORKER_CORES=6
       - SPARK_WORKER_MEMORY=6g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
-    mem_limit: 3g
     volumes:
       - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
       - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
     depends_on:
       - spark-master
       - datanode
-      - redis-stack
+      - redis
     networks:
       - app-network
+
   spark-worker-2:
     image: bde2020/spark-worker
     container_name: spark-worker-2
@@ -69,52 +71,116 @@ services:
       - SPARK_WORKER_CORES=6
       - SPARK_WORKER_MEMORY=6g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
-    mem_limit: 3g
     volumes:
-      - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
-      - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
+      # <-- FIX: Changed to unique log directories for the second worker
+      - ./docker-volumes/spark_worker_2_app_logs:/opt/spark-apps/logs
+      - ./docker-volumes/spark_worker_2_daemon_logs:/opt/spark/logs
     depends_on:
       - spark-master
       - datanode
-      - redis-stack
+      - redis # <-- FIX: Corrected service name dependency
     networks:
       - app-network
 
-
-  redis-stack:
-    image: redis/redis-stack:latest
-    container_name: redis
+  kafka:
+    image: bitnami/kafka
+    container_name: kafka
     ports:
-      - "6379:6379"     # Redis server port
-      - "8001:8001"     # RedisInsight web UI
-    environment:
-      # Redis configuration for vector database
-      - REDIS_ARGS=--save 60 1000 --appendonly yes --appendfsync everysec --maxmemory 4gb --maxmemory-policy allkeys-lru --tcp-keepalive 300 --timeout 0 --databases 16
-    env_file:
-      - ./redis-config/redis.env
+      - "9094:9094"
     volumes:
-      - ./docker-volumes/redis_data:/var/lib/redis-stack
-      - ./redis-config:/usr/local/etc/redis-config:ro
+      - kafka_data:/bitnami/kafka
+    networks:
+      - app-network
+    environment:
+      # --- Simplified Listener for Internal Docker Network ---
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+      # --- Kraft Settings ---
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+
+      # --- Topic Settings ---
+      - KAFKA_CREATE_TOPICS=user_interactions:1:1
+
+  jobmanager:
+    image: flink:1.17.1-scala_2.12-java11
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+    networks: # <-- FIX: Added service to the network
+      - app-network
+
+  taskmanager:
+    image: flink:1.17.1-scala_2.12-java11
+    depends_on:
+      - jobmanager
+      - kafka
+      - redis # <-- FIX: Corrected service name dependency
+    command: taskmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 2
+    networks: # <-- FIX: Added service to the network
+      - app-network
+
+  # In your docker-compose.yml
+
+  real-time-service:
+    build:
+      context: ./real-time-service
+      dockerfile: Dockerfile
+    depends_on:
+      - jobmanager
+    # <-- FIX: Replaced the simple command with a robust retry loop
     command: >
-      redis-stack-server
-      --save 60 1000
-      --appendonly yes
-      --appendfsync everysec
-      --maxmemory 4gb
-      --maxmemory-policy allkeys-lru
-      --tcp-keepalive 300
-      --timeout 0
-      --databases 16
-      --bind 0.0.0.0
-      --protected-mode no
-      --hash-max-ziplist-entries 1024
-      --hash-max-ziplist-value 1024
-      --slowlog-log-slower-than 10000
-      --slowlog-max-len 128
-      --latency-monitor-threshold 100
-    mem_limit: 5g
-    mem_reservation: 4g
-    cpus: 2.0
+      bash -c "
+        echo 'Waiting for JobManager to be ready...'
+        while ! nc -z jobmanager 8081; do
+          sleep 1;
+        done;
+
+        echo 'JobManager port is open. Attempting to submit Flink job...'
+
+        MAX_RETRIES=5
+        RETRY_COUNT=0
+        until flink run -m jobmanager:8081 /opt/flink/usrlib/real-time-service.jar; do
+          RETRY_COUNT=$((RETRY_COUNT+1))
+          if [ ${RETRY_COUNT} -ge ${MAX_RETRIES} ]; then
+            echo 'Failed to submit Flink job after ${MAX_RETRIES} attempts. Exiting.'
+            exit 1
+          fi
+          echo 'Job submission failed, retrying in 5 seconds... (Attempt ${RETRY_COUNT}/${MAX_RETRIES})'
+          sleep 5
+        done
+
+        echo 'Flink job submitted successfully.'
+      "
+    networks:
+      - app-network
+
+  # <-- FIX: Renamed service to 'redis' for consistency
+  redis:
+    image: redis/redis-stack:latest
+    container_name: redis # This is fine to keep as 'redis'
+    ports:
+      - "6379:6379"
+      - "8001:8001"
+    environment:
+      # <-- FIX: Simplified config to use REDIS_ARGS, removed redundant command
+      - REDIS_ARGS=--save 60 1 --appendonly yes --tcp-keepalive 300 --protected-mode no
+    volumes:
+      - ./docker-volumes/redis_data:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -125,14 +191,16 @@ services:
     networks:
       - app-network
 
+
   redis-init:
     image: redis/redis-stack:latest
     container_name: redis-init
     depends_on:
-      redis-stack:
+      redis:
         condition: service_healthy
     volumes:
       - ./redis-config:/scripts:ro
+    # <-- FIX: Corrected the PREFIX for both FT.CREATE commands
     command: >
       sh -c "
         echo 'Waiting for Redis to be ready...' &&
@@ -143,10 +211,10 @@ services:
         echo 'Redis is ready! Initializing vector database...' &&
 
         echo 'Creating user factors vector index...' &&
-        redis-cli -h redis FT.CREATE user_factors_idx ON HASH PREFIX 1 'user_factor:' SCHEMA userId NUMERIC SORTABLE factors VECTOR FLAT 6 TYPE FLOAT32 DIM 50 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
+        redis-cli -h redis FT.CREATE user_factors_idx ON HASH PREFIX 1 'vector:user:' SCHEMA userId NUMERIC SORTABLE vector VECTOR FLAT 6 TYPE FLOAT32 DIM 12 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
 
         echo 'Creating item factors vector index...' &&
-        redis-cli -h redis FT.CREATE item_factors_idx ON HASH PREFIX 1 'item_factor:' SCHEMA itemId NUMERIC SORTABLE factors VECTOR FLAT 6 TYPE FLOAT32 DIM 50 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
+        redis-cli -h redis FT.CREATE item_factors_idx ON HASH PREFIX 1 'vector:item:' SCHEMA itemId NUMERIC SORTABLE vector VECTOR FLAT 6 TYPE FLOAT32 DIM 12 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
 
         echo 'Creating movie metadata index...' &&
         redis-cli -h redis FT.CREATE movie_metadata_idx ON HASH PREFIX 1 'movie:' SCHEMA movieId NUMERIC SORTABLE title TEXT SORTABLE genres TAG SEPARATOR '|' year NUMERIC SORTABLE &&
@@ -155,12 +223,12 @@ services:
         redis-cli -h redis FT.CREATE user_recommendations_idx ON HASH PREFIX 1 'user_rec:' SCHEMA userId NUMERIC SORTABLE movieId NUMERIC SORTABLE rating NUMERIC SORTABLE timestamp NUMERIC SORTABLE modelVersion TAG &&
 
         echo 'Vector database initialization completed!' &&
-        redis-cli -h redis FT._LIST &&
-        echo 'Redis Vector Database is ready for use!'
+        redis-cli -h redis FT._LIST
       "
     restart: "no"
     networks:
       - app-network
+
   mongodb:
     image: mongo:latest
     container_name: mongodb
@@ -179,7 +247,11 @@ volumes:
   spark_master_spark_logs:
   spark_worker_app_logs:
   spark_worker_daemon_logs:
+  # <-- FIX: Added volumes for the second worker
+  spark_worker_2_app_logs:
+  spark_worker_2_daemon_logs:
   mongo_data:
+  kafka_data:
 
 networks:
   app-network:
