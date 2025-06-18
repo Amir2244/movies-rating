@@ -38,6 +38,8 @@ jobs:
         run: mvn -B clean install --file shared-kernel/pom.xml
       - name: Build batch-processing-service
         run: mvn -B clean package --file batch-processing-service/pom.xml
+      - name: Build real-time-service
+        run: mvn -B clean package --file real-time-service/pom.xml
 
       # Switch to Java 17 for the rest
       - name: Set up JDK 17 for Spring services
@@ -63,6 +65,11 @@ jobs:
           name: batch-processing-service-jar
           path: batch-processing-service/target/batch-processing-service.jar
 
+      - name: Upload real-time-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-time-service-jar
+          path: real-time-service/target/real-time-service-1.0-SNAPSHOT.jar
       - name: Upload recommendations-api WAR
         uses: actions/upload-artifact@v4
         with:
