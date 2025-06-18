@@ -1,16 +1,11 @@
 
 package org.hiast.realtime.config;
 
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.*;
 
 import java.io.InputStream;
 import java.util.Properties;
 
-/**
- * Configuration loader for the application.
- * Reads properties from a config file.
- */
 public class AppConfig {
     private final Properties properties = new Properties();
 
@@ -33,9 +28,15 @@ public class AppConfig {
         return Integer.parseInt(properties.getProperty(key));
     }
 
-    public JedisPool getJedisPool() {
+    /**
+     * Creates a UnifiedJedis client. For a standalone Redis instance,
+     * JedisPooled is a simple, thread-safe implementation.
+     * @return A UnifiedJedis instance.
+     */
+    public UnifiedJedis getUnifiedJedis() {
+        HostAndPort hostAndPort = new HostAndPort(getProperty("redis.host"), getIntProperty("redis.port"));
         JedisPoolConfig poolConfig = new JedisPoolConfig();
         poolConfig.setMaxTotal(getIntProperty("redis.pool.maxTotal"));
-        return new JedisPool(poolConfig, getProperty("redis.host"), getIntProperty("redis.port"));
+        return new JedisPooled(hostAndPort);
     }
 }

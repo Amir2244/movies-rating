@@ -1,22 +1,14 @@
 
 package org.hiast.realtime;
 
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.hiast.realtime.adapter.in.flink.RecommendationMapFunction;
+import org.hiast.realtime.adapter.in.flink.RecommendationRichMapFunction;
 import org.hiast.realtime.adapter.in.kafka.FuryDeserializationSchema;
-import org.hiast.realtime.adapter.out.notifier.LoggingNotifierAdapter;
-import org.hiast.realtime.adapter.out.redis.RedisUserFactorAdapter;
-import org.hiast.realtime.adapter.out.redis.RedisVectorSearchAdapter;
-import org.hiast.realtime.application.service.RealTimeRecommendationService;
 import org.hiast.realtime.config.AppConfig;
 import org.hiast.realtime.domain.model.InteractionEvent;
-import redis.clients.jedis.JedisPool;
 
-import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -25,11 +17,17 @@ import java.util.Properties;
 public class RealTimeRecommendationsJob {
 
     public static void main(String[] args) throws Exception {
+        // Determine which configuration to load based on program arguments
+        final String configFileName = (args.length > 0 && "local".equalsIgnoreCase(args[0]))
+                ? "real-time-config-local.properties"
+                : "real-time-config.properties";
+
         // 1. Set up the Flink execution environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        // 2. Load configuration
-        AppConfig appConfig = new AppConfig("real-time-config.properties");
+        // 2. Load configuration on the client side just for Kafka properties
+        // The RichMapFunction will load its own config on the workers.
+        AppConfig appConfig = new AppConfig(configFileName);
 
         // 3. Configure Kafka consumer
         Properties kafkaProps = new Properties();
@@ -38,36 +36,23 @@ public class RealTimeRecommendationsJob {
 
         String inputTopic = appConfig.getProperty("kafka.topic.input");
 
-        KafkaSource<InteractionEvent> kafkaSource = KafkaSource.<InteractionEvent>builder()
-                .setBootstrapServers(kafkaProps.getProperty("bootstrap.servers"))
-                .setTopics(inputTopic)
-                .setGroupId(kafkaProps.getProperty("group.id"))
-                .setValueOnlyDeserializer(new FuryDeserializationSchema())
-                .build();
-
-
-// 4. Create the data stream from Kafka
-        DataStream<InteractionEvent> interactionEvents = env.fromSource(kafkaSource, WatermarkStrategy.noWatermarks(), "Kafka Source");
-        // 5. Set up dependencies for the hexagonal architecture
-        JedisPool jedisPool = appConfig.getJedisPool();
-
-        RedisUserFactorAdapter userFactorAdapter = new RedisUserFactorAdapter(jedisPool);
-        RedisVectorSearchAdapter vectorSearchAdapter = new RedisVectorSearchAdapter(jedisPool);
-        LoggingNotifierAdapter notifierAdapter = new LoggingNotifierAdapter();
-
-        RealTimeRecommendationService recommendationService = new RealTimeRecommendationService(
-                userFactorAdapter,
-                vectorSearchAdapter,
-                notifierAdapter
+        FlinkKafkaConsumer<InteractionEvent> kafkaConsumer = new FlinkKafkaConsumer<>(
+                inputTopic,
+                new FuryDeserializationSchema(),
+                kafkaProps
         );
 
-        // 6. Process the stream
+        // 4. Create the data stream from Kafka
+        DataStream<InteractionEvent> interactionEvents = env.addSource(kafkaConsumer);
+
+        // 5. Process the stream with the RichMapFunction.
+        // The function will manage its own dependencies and connections.
         interactionEvents
-                .filter(Objects::nonNull) // Filter out any messages that failed deserialization
-                .map(new RecommendationMapFunction(recommendationService))
+                .filter(event -> event != null) // Filter out any messages that failed deserialization
+                .map(new RecommendationRichMapFunction()) // This is now self-contained
                 .name("RealTimeRecommendationProcessing");
 
-        // 7. Execute the Flink job
+        // 6. Execute the Flink job
         env.execute("Real-Time Movie Recommendations Job");
     }
 }
