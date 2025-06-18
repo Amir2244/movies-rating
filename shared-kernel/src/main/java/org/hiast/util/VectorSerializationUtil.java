@@ -76,7 +76,50 @@ public final class VectorSerializationUtil {
                 "Failed to serialize vector of dimension " + vector.length, e);
         }
     }
-    
+    /**
+     * Deserializes a byte array back to a float array.
+     *
+     * @param bytes The byte array to deserialize
+     * @return The deserialized float array
+     * @throws VectorSerializationException if deserialization fails
+     */
+    public static float[] deserializeVector(byte[] bytes) {
+        if (bytes == null) {
+            throw new VectorSerializationException("Byte array cannot be null");
+        }
+
+        if (bytes.length == 0) {
+            throw new VectorSerializationException("Byte array cannot be empty");
+        }
+
+        if (bytes.length % FLOAT_SIZE_BYTES != 0) {
+            throw new VectorSerializationException(
+                    "Invalid byte array length: " + bytes.length +
+                            ". Must be divisible by " + FLOAT_SIZE_BYTES);
+        }
+
+        try {
+            ByteBuffer buffer = ByteBuffer.wrap(bytes);
+            buffer.order(BYTE_ORDER);
+
+            int dimension = bytes.length / FLOAT_SIZE_BYTES;
+            float[] vector = new float[dimension];
+
+            for (int i = 0; i < dimension; i++) {
+                vector[i] = buffer.getFloat();
+            }
+
+            log.debug("Deserialized {} bytes to vector of dimension {}",
+                    bytes.length, dimension);
+            return vector;
+
+        } catch (Exception e) {
+            throw new VectorSerializationException(
+                    "Failed to deserialize byte array of length " + bytes.length, e);
+        }
+    }
+
+
     /**
      * Validates that a vector is suitable for Redis vector storage.
      * 

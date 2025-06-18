@@ -13,6 +13,8 @@
         <option value="$PROJECT_DIR$/recommendations-api/pom.xml" />
         <option value="$PROJECT_DIR$/batch-processing-service/pom.xml" />
         <option value="$PROJECT_DIR$/analytics-api/pom.xml" />
+        <option value="$PROJECT_DIR$/real-time-service/pom.xml" />
+        <option value="$PROJECT_DIR$/test/pom.xml" />
       </list>
     </option>
   </component>
