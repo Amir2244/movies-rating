@@ -9,5 +9,5 @@ import java.util.Optional;
  * The adapter will implement this to get data from Redis.
  */
 public interface UserFactorPort {
-    Optional<UserFactor> findUserFactorById(UserId userId);
+    Optional<UserFactor<float[]>> findUserFactorById(UserId userId);
 }

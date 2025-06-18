@@ -10,5 +10,5 @@ import java.util.List;
  * The adapter will implement this to query Redis for similar items.
  */
 public interface VectorSearchPort {
-    List<MovieRecommendation> findSimilarItems(UserFactor userFactor, int topN);
+    List<MovieRecommendation> findSimilarItems(UserFactor<float[]> userFactor, int topN);
 }
