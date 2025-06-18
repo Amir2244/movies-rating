@@ -97,7 +97,11 @@ jobs:
         with:
           name: batch-processing-service-jar
           path: ./artifacts/
-
+      - name: Download real-time-service JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: real-time-service-jar
+          path: ./artifacts/
       - name: Download recommendations-api WAR
         uses: actions/download-artifact@v4
         with:
