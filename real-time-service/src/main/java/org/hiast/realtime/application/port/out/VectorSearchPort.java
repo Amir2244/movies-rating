@@ -10,5 +10,25 @@ import java.util.List;
  * The adapter will implement this to query Redis for similar items.
  */
 public interface VectorSearchPort {
-    List<MovieRecommendation> findSimilarItems(UserFactor<float[]> userFactor, int topN);
+    /**
+     * Finds similar items based on user factor.
+     * 
+     * @param userFactor The user factor to find similar items for
+     * @param topN The number of recommendations to return
+     * @param eventWeight The weight of the event that triggered this search, used to adjust ratings
+     * @return A list of movie recommendations
+     */
+    List<MovieRecommendation> findSimilarItems(UserFactor<float[]> userFactor, int topN, double eventWeight);
+
+    /**
+     * Finds similar items based on user factor (without considering event weight).
+     * 
+     * @param userFactor The user factor to find similar items for
+     * @param topN The number of recommendations to return
+     * @return A list of movie recommendations
+     */
+    default List<MovieRecommendation> findSimilarItems(UserFactor<float[]> userFactor, int topN) {
+        // Default implementation calls the weighted version with a neutral weight of 1.0
+        return findSimilarItems(userFactor, topN, 1.0);
+    }
 }
