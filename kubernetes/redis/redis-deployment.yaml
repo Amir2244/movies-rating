@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis/redis-stack:latest
+        ports:
+        - containerPort: 6379
+          name: redis
+        - containerPort: 8001
+          name: redis-ui
+        env:
+        - name: REDIS_ARGS
+          value: "--save 60 1 --appendonly yes --tcp-keepalive 300 --protected-mode no"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          periodSeconds: 30
+          failureThreshold: 3
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          periodSeconds: 30
+          failureThreshold: 3
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  - name: redis-ui
+    port: 8001
+    targetPort: 8001
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

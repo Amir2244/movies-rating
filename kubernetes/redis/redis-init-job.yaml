@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-init
+spec:
+  template:
+    spec:
+      containers:
+      - name: redis-init
+        image: redis/redis-stack:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo 'Waiting for Redis to be ready...' &&
+          until redis-cli -h redis ping; do
+            echo 'Redis is unavailable - sleeping' &&
+            sleep 1
+          done &&
+          echo 'Redis is ready! Initializing vector database...' &&
+
+          echo 'Creating user factors vector index...' &&
+          redis-cli -h redis FT.CREATE user_factors_idx ON HASH PREFIX 1 'vector:user:' SCHEMA userId NUMERIC SORTABLE vector VECTOR FLAT 6 TYPE FLOAT32 DIM 12 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
+
+          echo 'Creating item factors vector index...' &&
+          redis-cli -h redis FT.CREATE item_factors_idx ON HASH PREFIX 1 'vector:item:' SCHEMA itemId NUMERIC SORTABLE vector VECTOR FLAT 6 TYPE FLOAT32 DIM 12 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
+
+          echo 'Creating movie metadata index...' &&
+          redis-cli -h redis FT.CREATE movie_metadata_idx ON HASH PREFIX 1 'movie:' SCHEMA movieId NUMERIC SORTABLE title TEXT SORTABLE genres TAG SEPARATOR '|' year NUMERIC SORTABLE &&
+
+          echo 'Creating user recommendations cache index...' &&
+          redis-cli -h redis FT.CREATE user_recommendations_idx ON HASH PREFIX 1 'user_rec:' SCHEMA userId NUMERIC SORTABLE movieId NUMERIC SORTABLE rating NUMERIC SORTABLE timestamp NUMERIC SORTABLE modelVersion TAG &&
+
+          echo 'Vector database initialization completed!' &&
+          redis-cli -h redis FT._LIST
+        volumeMounts:
+        - name: redis-config
+          mountPath: /scripts
+      volumes:
+      - name: redis-config
+        emptyDir: {}
+      restartPolicy: OnFailure
