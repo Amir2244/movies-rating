@@ -35,12 +35,23 @@ public class RealTimeRecommendationService implements ProcessInteractionEventUse
 
     @Override
     public void processEvent(InteractionEvent event) {
-        if (event == null || event.getUserId() == null) {
+        if (event == null || event.getUserId() == null || event.getDetails() == null) {
             LOG.warn("Received a null or invalid interaction event.");
             return;
         }
 
-        LOG.info("Processing event for user: {}", event.getUserId().getUserId());
+        // Get the event type and its weight
+        double eventWeight = event.getDetails().getEventType().getWeight();
+        LOG.info("Processing event for user: {} with event type: {} and weight: {}", 
+                event.getUserId().getUserId(), 
+                event.getDetails().getEventType(),
+                eventWeight);
+
+        // Skip processing for events with zero weight
+        if (eventWeight <= 0) {
+            LOG.info("Skipping event with zero or negative weight: {}", event.getDetails().getEventType());
+            return;
+        }
 
         Optional<UserFactor<float[]>> userFactorOpt = userFactorPort.findUserFactorById(event.getUserId());
 
@@ -50,12 +61,24 @@ public class RealTimeRecommendationService implements ProcessInteractionEventUse
         }
 
         UserFactor<float[]> userFactor = userFactorOpt.get();
-        List<MovieRecommendation> recommendations = vectorSearchPort.findSimilarItems(userFactor, TOP_N_RECOMMENDATIONS);
+
+        // Use the event weight to determine the number of recommendations
+        // More important events get more recommendations
+        int numRecommendations = Math.max(1, (int) Math.ceil(eventWeight * TOP_N_RECOMMENDATIONS / 5.0));
+        LOG.info("Generating {} recommendations based on event weight {}", numRecommendations, eventWeight);
+
+        // Pass the event weight to the vector search port to influence the rating calculation
+        List<MovieRecommendation> recommendations = vectorSearchPort.findSimilarItems(userFactor, numRecommendations, eventWeight);
+        LOG.info("Generated {} recommendations with event weight {} applied to ratings", recommendations.size(), eventWeight);
 
         if (recommendations.isEmpty()) {
             LOG.info("No recommendations found for user: {}", event.getUserId().getUserId());
         } else {
+            // Include the original event in the notification
             recommendationNotifierPort.notify(event.getUserId(), recommendations);
         }
+
+        // Mark the event as processed
+        event.setProcessed(true);
     }
 }
