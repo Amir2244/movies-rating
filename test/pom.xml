@@ -18,6 +18,7 @@
             <groupId>org.apache.fury</groupId>
             <artifactId>fury-core</artifactId>
             <version>0.5.0</version>
+            <scope>compile</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients -->
         <dependency>
