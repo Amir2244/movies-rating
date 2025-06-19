@@ -6,7 +6,9 @@
 
     <groupId>org.hiast</groupId>
     <artifactId>test</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.0.1</version>
+    <name>Test-Streaming</name>
+    <description>Test Streaming Service that communicate with Real Time Service</description>
     <packaging>jar</packaging>
     <properties>
         <maven.compiler.source>24</maven.compiler.source>

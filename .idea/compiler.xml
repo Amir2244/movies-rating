@@ -13,7 +13,7 @@
         <module name="test" />
         <module name="test (1)" />
       </profile>
-      <profile name="Annotation profile for recommendations-api" enabled="true">
+      <profile name="Annotation profile for Recommendations API" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
