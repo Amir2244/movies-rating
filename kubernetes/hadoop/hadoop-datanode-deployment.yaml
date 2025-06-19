@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datanode
+  labels:
+    app: datanode
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datanode
+  template:
+    metadata:
+      labels:
+        app: datanode
+    spec:
+      containers:
+      - name: datanode
+        image: bde2020/hadoop-datanode
+        env:
+        - name: CORE_CONF_fs_defaultFS
+          value: hdfs://namenode:8020
+        ports:
+        - containerPort: 9864
+          name: datanode-http
+        volumeMounts:
+        - name: datanode-data
+          mountPath: /hadoop/dfs/data
+      volumes:
+      - name: datanode-data
+        persistentVolumeClaim:
+          claimName: datanode-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datanode
+spec:
+  selector:
+    app: datanode
+  ports:
+  - name: datanode-http
+    port: 9864
+    targetPort: 9864
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: datanode-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
