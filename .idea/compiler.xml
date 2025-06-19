@@ -10,6 +10,8 @@
         <module name="shared-kernel" />
         <module name="batch-processing-service" />
         <module name="real-time-service" />
+        <module name="test" />
+        <module name="test (1)" />
       </profile>
       <profile name="Annotation profile for recommendations-api" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -25,7 +27,7 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="movies-rating" target="24" />
-      <module name="test" target="1.8" />
+      <module name="test (1)" target="1.8" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
