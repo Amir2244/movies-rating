@@ -20,6 +20,7 @@ public class InteractionEvent implements Serializable {
     private UserId userId;
     private MovieId movieId;
     private InteractionEventDetails details;
+    private boolean processed = false; // Flag to indicate if the event has been processed
 
     public InteractionEvent() {
     }
@@ -28,6 +29,7 @@ public class InteractionEvent implements Serializable {
         this.userId = userId;
         this.movieId = movieId;
         this.details = details;
+        this.processed = false;
     }
 
     public UserId getUserId() {
@@ -52,5 +54,21 @@ public class InteractionEvent implements Serializable {
 
     public void setDetails(InteractionEventDetails details) {
         this.details = details;
+    }
+
+    /**
+     * Checks if the event has been processed.
+     * @return true if the event has been processed, false otherwise
+     */
+    public boolean isProcessed() {
+        return processed;
+    }
+
+    /**
+     * Sets the processed flag.
+     * @param processed the processed flag value
+     */
+    public void setProcessed(boolean processed) {
+        this.processed = processed;
     }
 }
