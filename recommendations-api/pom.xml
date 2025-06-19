@@ -10,10 +10,10 @@
     </parent>
     <groupId>org.hiast</groupId>
     <artifactId>recommendations-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <packaging>war</packaging>
-    <name>recommendations-api</name>
-    <description>recommendations-api</description>
+    <name>Recommendations API</name>
+    <description>REST API backend for recommendations and content suggestions functionality</description>
     <url/>
     <licenses>
         <license/>
@@ -69,7 +69,7 @@
         <dependency>
             <groupId>org.hiast</groupId>
             <artifactId>shared-kernel</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>0.0.1</version>
         </dependency>
 
         <!-- AOP Dependencies -->

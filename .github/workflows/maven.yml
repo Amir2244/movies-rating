@@ -68,7 +68,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: real-time-service-jar
-          path: real-time-service/target/real-time-service-1.0-SNAPSHOT.jar
+          path: real-time-service/target/real-time-service-0.0.1.jar
       - name: Upload recommendations-api WAR
         uses: actions/upload-artifact@v4
         with:
@@ -80,48 +80,3 @@ jobs:
         with:
           name: analytics-api-war
           path: analytics-api/target/*.war
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download shared-kernel JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: shared-kernel-jar
-          path: ./artifacts/
-
-      - name: Download batch-processing-service JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: batch-processing-service-jar
-          path: ./artifacts/
-      - name: Download real-time-service JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: real-time-service-jar
-          path: ./artifacts/
-      - name: Download recommendations-api WAR
-        uses: actions/download-artifact@v4
-        with:
-          name: recommendations-api-war
-          path: ./artifacts/
-
-      - name: Download analytics-api WAR
-        uses: actions/download-artifact@v4
-        with:
-          name: analytics-api-war
-          path: ./artifacts/
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            ./artifacts/*.jar
-            ./artifacts/*.war
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

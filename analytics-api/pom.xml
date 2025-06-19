@@ -10,10 +10,10 @@
     </parent>
     <groupId>org.hiast</groupId>
     <artifactId>analytics-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <packaging>war</packaging>
-    <name>analytics-api</name>
-    <description>analytics-api</description>
+    <name>Analytics API</name>
+    <description>REST API backend for analytics and reporting functionality</description>
     <url/>
     <licenses>
         <license/>
@@ -91,7 +91,7 @@
         <dependency>
             <groupId>org.hiast</groupId>
             <artifactId>shared-kernel</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
