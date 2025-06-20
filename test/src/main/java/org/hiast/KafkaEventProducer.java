@@ -144,10 +144,21 @@ public class KafkaEventProducer {
         // 1. Initialize Fury, configured exactly like in the Flink DeserializationSchema
         Fury fury = Fury.builder()
                 .withLanguage(Language.JAVA)
-                .requireClassRegistration(false)
+                .requireClassRegistration(true)
+                .withAsyncCompilation(true)
                 .withRefTracking(true)
                 .build();
-
+        fury.register(MovieRecommendation.class);
+        fury.register(InteractionEvent.class);
+        fury.register(MovieId.class);
+        fury.register(Integer.class);
+        fury.register(UserId.class);
+        fury.register(InteractionEventDetails.class);
+        fury.register(Float.class);
+        fury.register(RatingValue.class);
+        fury.register(Long.class);
+        fury.register(EventType.class);
+        fury.register(List.class);
         // 2. Set up Kafka Producer properties
         Properties producerProps = new Properties();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_BROKER);

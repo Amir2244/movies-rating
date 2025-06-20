@@ -3,9 +3,17 @@ package org.hiast.realtime.adapter.out.kafka;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.fury.Fury;
 import org.apache.fury.config.Language;
+import org.hiast.events.EventType;
+import org.hiast.ids.MovieId;
+import org.hiast.ids.UserId;
+import org.hiast.model.InteractionEventDetails;
+import org.hiast.model.MovieRecommendation;
+import org.hiast.model.RatingValue;
 import org.hiast.realtime.domain.model.InteractionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * A Flink SerializationSchema that uses Apache Fury to serialize
@@ -21,9 +29,21 @@ public class FurySerializationSchema implements SerializationSchema<InteractionE
         // Initialize Fury with the same configuration as in FuryDeserializationSchema
         fury = Fury.builder()
                 .withLanguage(Language.JAVA)
-                .requireClassRegistration(false)
+                .requireClassRegistration(true)
+                .withAsyncCompilation(true)
                 .withRefTracking(true)
                 .build();
+        fury.register(MovieRecommendation.class);
+        fury.register(InteractionEvent.class);
+        fury.register(MovieId.class);
+        fury.register(Integer.class);
+        fury.register(UserId.class);
+        fury.register(InteractionEventDetails.class);
+        fury.register(Float.class);
+        fury.register(RatingValue.class);
+        fury.register(Long.class);
+        fury.register(EventType.class);
+        fury.register(List.class);
         LOG.info("FurySerializationSchema initialized");
     }
 
