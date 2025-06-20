@@ -66,7 +66,7 @@ services:
     depends_on:
       - spark-master
       - datanode
-      - redis # <-- FIX: Corrected service name dependency
+      - redis
     networks:
       - app-network
 
@@ -80,19 +80,19 @@ services:
     networks:
       - app-network
     environment:
-      # --- Simplified Listener for Internal Docker Network ---
+
       - KAFKA_CFG_LISTENERS=INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093
       - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://localhost:9094
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
 
-      # --- Kraft Settings ---
+
       - KAFKA_CFG_NODE_ID=0
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
 
-      # --- Topic Settings ---
+
       - KAFKA_CREATE_TOPICS=user_interactions:1:1
 
   jobmanager:
@@ -104,7 +104,7 @@ services:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
-    networks: # <-- FIX: Added service to the network
+    networks:
       - app-network
 
   taskmanager:
@@ -112,17 +112,16 @@ services:
     depends_on:
       - jobmanager
       - kafka
-      - redis # <-- FIX: Corrected service name dependency
+      - redis
     command: taskmanager
     environment:
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
         taskmanager.numberOfTaskSlots: 2
-    networks: # <-- FIX: Added service to the network
+    networks:
       - app-network
 
-  # In your docker-compose.yml
 
   real-time-service:
     build:
@@ -130,7 +129,6 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - jobmanager
-    # <-- FIX: Replaced the simple command with a robust retry loop
     command: >
       bash -c "
         echo 'Waiting for JobManager to be ready...'
@@ -157,15 +155,13 @@ services:
     networks:
       - app-network
 
-  # <-- FIX: Renamed service to 'redis' for consistency
   redis:
     image: redis/redis-stack:latest
-    container_name: redis # This is fine to keep as 'redis'
+    container_name: redis
     ports:
       - "6379:6379"
       - "8001:8001"
     environment:
-      # <-- FIX: Simplified config to use REDIS_ARGS, removed redundant command
       - REDIS_ARGS=--save 60 1 --appendonly yes --tcp-keepalive 300 --protected-mode no
     volumes:
       - ./docker-volumes/redis_data:/data
@@ -188,7 +184,6 @@ services:
         condition: service_healthy
     volumes:
       - ./redis-config:/scripts:ro
-    # <-- FIX: Corrected the PREFIX for both FT.CREATE commands
     command: >
       sh -c "
         echo 'Waiting for Redis to be ready...' &&
