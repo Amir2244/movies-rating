@@ -1,6 +1,3 @@
-# Corrected docker-compose.yml
-version: "3.8"
-
 services:
   namenode:
     image: bde2020/hadoop-namenode
@@ -40,8 +37,6 @@ services:
       - "7077:7077"
     volumes:
       - ./batch-processing-service/target/batch-processing-service.jar:/opt/spark-apps/batch-processing-service.jar
-      - ./docker-volumes/spark_master_app_logs:/opt/spark-apps/logs
-      - ./docker-volumes/spark_master_spark_logs:/opt/spark/logs
     networks:
       - app-network
 
@@ -50,12 +45,9 @@ services:
     container_name: spark-worker
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=6
-      - SPARK_WORKER_MEMORY=6g
+      - SPARK_WORKER_CORES=3
+      - SPARK_WORKER_MEMORY=2g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
-    volumes:
-      - ./docker-volumes/spark_worker_app_logs:/opt/spark-apps/logs
-      - ./docker-volumes/spark_worker_daemon_logs:/opt/spark/logs
     depends_on:
       - spark-master
       - datanode
@@ -68,13 +60,9 @@ services:
     container_name: spark-worker-2
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=6
-      - SPARK_WORKER_MEMORY=6g
+      - SPARK_WORKER_CORES=3
+      - SPARK_WORKER_MEMORY=2g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
-    volumes:
-      # <-- FIX: Changed to unique log directories for the second worker
-      - ./docker-volumes/spark_worker_2_app_logs:/opt/spark-apps/logs
-      - ./docker-volumes/spark_worker_2_daemon_logs:/opt/spark/logs
     depends_on:
       - spark-master
       - datanode
@@ -243,13 +231,6 @@ volumes:
   namenode_data:
   datanode_data:
   redis_data:
-  spark_master_app_logs:
-  spark_master_spark_logs:
-  spark_worker_app_logs:
-  spark_worker_daemon_logs:
-  # <-- FIX: Added volumes for the second worker
-  spark_worker_2_app_logs:
-  spark_worker_2_daemon_logs:
   mongo_data:
   kafka_data:
 
