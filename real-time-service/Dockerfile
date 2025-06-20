@@ -15,4 +15,4 @@ USER flink
 
 # Copy the pre-built JAR file to Flink's usrlib directory
 # This command assumes the JAR is in the 'target' directory when you run docker-compose build
-COPY target/real-time-service-1.0-SNAPSHOT.jar /opt/flink/usrlib/real-time-service.jar
+COPY target/real-time-service-0.0.1.jar /opt/flink/usrlib/real-time-service.jar

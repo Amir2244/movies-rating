@@ -287,7 +287,7 @@ public class StreamingMovieMetaDataEnrichmentFilter implements Filter<ALSTrainin
      * Save recommendations in batches
      */
     private void saveInBatches(List<UserRecommendations> recommendations) {
-        int batchSize = 1000;
+        int batchSize = 5000;
 
         batchIterating(recommendations, batchSize, resultPersistence, log);
     }

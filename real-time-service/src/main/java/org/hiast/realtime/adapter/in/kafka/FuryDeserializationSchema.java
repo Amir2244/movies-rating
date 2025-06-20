@@ -4,8 +4,8 @@ package org.hiast.realtime.adapter.in.kafka;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.fury.Fury;
-import org.apache.fury.config.Language;
 import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.realtime.util.FurySerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,12 +22,8 @@ public class FuryDeserializationSchema implements DeserializationSchema<Interact
 
     @Override
     public void open(InitializationContext context) {
-        // Initialize Fury on each task manager.
-        fury = Fury.builder()
-                .withLanguage(Language.JAVA)
-                .requireClassRegistration(false)
-                .withRefTracking(true)
-                .build();
+        fury = FurySerializationUtils.createConfiguredFury();
+        LOG.info("FuryDeserializationSchema initialized");
     }
 
     @Override

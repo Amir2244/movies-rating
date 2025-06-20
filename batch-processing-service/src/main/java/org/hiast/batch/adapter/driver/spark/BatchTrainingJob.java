@@ -61,6 +61,15 @@ public final class BatchTrainingJob {
         log.info("SparkSession initialized. Spark version: {}", spark.version());
         log.info("Default FileSystem: {}", spark.sparkContext().hadoopConfiguration().get("fs.defaultFS"));
 
+        // Set checkpoint directory for Spark context if configured
+        String checkpointDir = sparkConf.get("spark.checkpoint.dir", null);
+        if (checkpointDir != null && !checkpointDir.isEmpty()) {
+            spark.sparkContext().setCheckpointDir(checkpointDir);
+            log.info("Spark checkpoint directory set to: {}", checkpointDir);
+        } else {
+            log.warn("No spark.checkpoint.dir configured. ALS checkpointing will not be active.");
+        }
+
         // --- 3. Instantiate Adapters (Infrastructure Layer Implementations) ---
         RatingDataProviderPort ratingDataProvider = new HdfsRatingDataProviderAdapter(hdfsConfig.getRatingsPath());
         FactorCachingPort factorPersistence = new RedisFactorCachingAdapter(redisConfig.getHost(), redisConfig.getPort());
