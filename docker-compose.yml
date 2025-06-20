@@ -45,8 +45,6 @@ services:
     container_name: spark-worker
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=3
-      - SPARK_WORKER_MEMORY=2g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
     depends_on:
       - spark-master
@@ -60,8 +58,6 @@ services:
     container_name: spark-worker-2
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=3
-      - SPARK_WORKER_MEMORY=2g
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
     depends_on:
       - spark-master
@@ -194,10 +190,10 @@ services:
         echo 'Redis is ready! Initializing vector database...' &&
 
         echo 'Creating user factors vector index...' &&
-        redis-cli -h redis FT.CREATE user_factors_idx ON HASH PREFIX 1 'vector:user:' SCHEMA userId NUMERIC SORTABLE vector VECTOR FLAT 6 TYPE FLOAT32 DIM 12 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
+        redis-cli -h redis FT.CREATE user_factors_idx ON HASH PREFIX 1 'vector:user:' SCHEMA userId NUMERIC SORTABLE vector VECTOR FLAT 6 TYPE FLOAT32 DIM 50 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
 
         echo 'Creating item factors vector index...' &&
-        redis-cli -h redis FT.CREATE item_factors_idx ON HASH PREFIX 1 'vector:item:' SCHEMA itemId NUMERIC SORTABLE vector VECTOR FLAT 6 TYPE FLOAT32 DIM 12 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
+        redis-cli -h redis FT.CREATE item_factors_idx ON HASH PREFIX 1 'vector:item:' SCHEMA itemId NUMERIC SORTABLE vector VECTOR FLAT 6 TYPE FLOAT32 DIM 50 DISTANCE_METRIC COSINE timestamp NUMERIC SORTABLE modelVersion TAG &&
 
         echo 'Creating movie metadata index...' &&
         redis-cli -h redis FT.CREATE movie_metadata_idx ON HASH PREFIX 1 'movie:' SCHEMA movieId NUMERIC SORTABLE title TEXT SORTABLE genres TAG SEPARATOR '|' year NUMERIC SORTABLE &&
