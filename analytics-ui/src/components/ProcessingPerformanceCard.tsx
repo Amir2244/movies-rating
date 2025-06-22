@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from  '@/components/ui/card';
 import { Gauge} from 'lucide-react';
 import { AnalyticsDocument} from '@/lib/types';
-import { formatBytes, formatNumber } from "@/lib/formatters"
+import { formatNumber } from "@/lib/formatters"
 
 
 export const ProcessingPerformanceCard: React.FC<{ data: AnalyticsDocument | null }> = ({ data }) => {
@@ -20,13 +20,10 @@ export const ProcessingPerformanceCard: React.FC<{ data: AnalyticsDocument | nul
                         <p className="text-3xl font-bold text-blue-600">{formatNumber(data.metrics.totalRecords)}</p>
                     </div>
                     <div className="space-y-2">
-                        <p className="text-sm text-slate-600">Processing Time</p>
+                        <p className="text-sm text-slate-600">Processing Time Test</p>
                         <p className="text-3xl font-bold text-emerald-600">{data.metrics.processingTimeMs}ms</p>
                     </div>
-                    <div className="space-y-2">
-                        <p className="text-sm text-slate-600">Dataset Size</p>
-                        <p className="text-3xl font-bold text-purple-600">{formatBytes(data.metrics.totalDatasetSize)}</p>
-                    </div>
+
                     <div className="space-y-2">
                         <p className="text-sm text-slate-600">Data Quality</p>
                         <p className="text-3xl font-bold text-green-600">{data.metrics.dataQualityScore}%</p>
