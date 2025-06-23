@@ -10,7 +10,7 @@ export const MonthlyActivityChart: React.FC<{ data: TemporalChartData[] }> = ({ 
             <CardHeader><CardTitle className="flex items-center gap-2 text-emerald-600"><Calendar className="h-5 w-5" />Monthly Activity</CardTitle></CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
-                    <ComposedChart data={data}>
+                    <ComposedChart data={data}  margin={{top: 10, right: 30, left: 30, bottom: 0}}>
                         <defs><linearGradient id="monthlyGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/><stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/></linearGradient></defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
                         <XAxis dataKey="month" stroke="#64748b" />
