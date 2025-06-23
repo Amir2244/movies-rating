@@ -36,7 +36,7 @@ services:
       - "8080:8080"
       - "7077:7077"
     volumes:
-      - ./batch-processing-service/target/batch-processing-service.jar:/opt/spark-apps/batch-processing-service.jar
+      - ./batch-processing-service/target/batch-processing-service-0.0.1.jar:/opt/spark-apps/batch-processing-service.jar
     networks:
       - app-network
 
