@@ -5,15 +5,15 @@
  * It's the orchestrator that brings everything together.
  * 1. It calls the `useAnalyticsData` hook to get all data and states.
  * 2. It handles loading and error UI states.
- * 3. It lays out the dashboard structure using Tabs.
+ * 3. It lays out the dashboard structure using Tabs and Sidebar.
  * 4. It passes the processed data down to the individual chart components.
  */
 
-import React from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, Users, Film, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { DashboardHeader } from './DashboardHeader';
+import Sidebar from '@/components/sidebar/Sidebar';
 import {ProcessingPerformanceCard} from "@/components/ProcessingPerformanceCard";
 import {DataFreshnessCard} from "@/components/DataFreshnessCard";
 import {RatingDistributionChart} from "@/components/RatingDistributionChart";
@@ -31,6 +31,9 @@ import {WeeklyActivityChart} from "@/components/WeeklyActivityChart";
 
 
 const AnalyticsDashboard: React.FC = () => {
+    // State for active tab
+    const [activeTab, setActiveTab] = useState<string>("overview");
+
     // Call the single hook to get all data and state.
     const {
         isLoading,
@@ -53,6 +56,11 @@ const AnalyticsDashboard: React.FC = () => {
         weeklyActivityData,
     } = useAnalyticsData();
 
+    // Handle tab changes
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+    };
+
     // Handle loading state
     if (isLoading) {
         // This is a simple loader. In Next.js, a `loading.tsx` file provides a better UX.
@@ -65,62 +73,60 @@ const AnalyticsDashboard: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-800">
-            <div className="container mx-auto p-6">
-                <DashboardHeader
-                    processingData={processingData}
-                    userEngagementData={userEngagementData}
-                    moviePopularityData={moviePopularityData}
-                />
+        <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 text-slate-800">
+            {/* Sidebar */}
+            <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
 
-                <Tabs defaultValue="overview" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 bg-white/70 backdrop-blur-sm border border-slate-300">
-                        <TabsTrigger value="overview"><Activity className="w-4 h-4 mr-2" />System</TabsTrigger>
-                        <TabsTrigger value="behavior"><Users className="w-4 h-4 mr-2" />User</TabsTrigger>
-                        <TabsTrigger value="content"><Film className="w-4 h-4 mr-2" />Content</TabsTrigger>
-                        <TabsTrigger value="temporal"><Calendar className="w-4 h-4 mr-2" />Temporal</TabsTrigger>
-                    </TabsList>
+            {/* Main Content */}
+            <div className="flex-1 overflow-auto">
+                <div className="container mx-auto p-6">
+                    <DashboardHeader
+                        processingData={processingData}
+                        userEngagementData={userEngagementData}
+                        moviePopularityData={moviePopularityData}
+                    />
 
-                    {/* System Performance Tab */}
-                    <TabsContent value="overview" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                            <ProcessingPerformanceCard data={processingData} />
-                            <DataFreshnessCard data={freshnessData} />
-                            <RatingQualityCard data={ratingDistData} />
-                        </div>
-                        <RatingDistributionChart data={ratingChartData} />
-                    </TabsContent>
+                    <Tabs value={activeTab} className="w-full">
+                        {/* System Performance Tab */}
+                        <TabsContent value="overview" className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                                <ProcessingPerformanceCard data={processingData} />
+                                <DataFreshnessCard data={freshnessData} />
+                                <RatingQualityCard data={ratingDistData} />
+                            </div>
+                            <RatingDistributionChart data={ratingChartData} />
+                        </TabsContent>
 
-                    {/* User Analytics Tab */}
-                    <TabsContent value="behavior" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <UserEngagementChart data={engagementChartData} rawData={userEngagementData}/>
-                            <UserSegmentationChart data={segmentationChartData} rawData={userSegmentationData}/>
-                        </div>
-                    </TabsContent>
+                        {/* User Analytics Tab */}
+                        <TabsContent value="behavior" className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <UserEngagementChart data={engagementChartData} rawData={userEngagementData}/>
+                                <UserSegmentationChart data={segmentationChartData} rawData={userSegmentationData}/>
+                            </div>
+                        </TabsContent>
 
-                    {/* Content Insights Tab */}
-                    <TabsContent value="content" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <TopRatedMoviesCard data={topMovies} />
-                            <GenrePopularityChart data={genreCountData} />
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <GenreQualityChart data={genreRatingData} />
-                            <ContentPerformanceCard data={contentPerformanceData} />
-                        </div>
-                    </TabsContent>
+                        {/* Content Insights Tab */}
+                        <TabsContent value="content" className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <TopRatedMoviesCard data={topMovies} />
+                                <GenrePopularityChart data={genreCountData} />
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <GenreQualityChart data={genreRatingData} />
+                                <ContentPerformanceCard data={contentPerformanceData} />
+                            </div>
+                        </TabsContent>
 
-                    {/* Temporal Trends Tab */}
-                    <TabsContent value="temporal" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <MonthlyActivityChart data={monthlyChartData} />
-                            <YearlyEvolutionChart data={yearlyChartData} />
-                        </div>
-                        <WeeklyActivityChart data={weeklyActivityData} />
-                    </TabsContent>
-
-                </Tabs>
+                        {/* Temporal Trends Tab */}
+                        <TabsContent value="temporal" className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <MonthlyActivityChart data={monthlyChartData} />
+                                <YearlyEvolutionChart data={yearlyChartData} />
+                            </div>
+                            <WeeklyActivityChart data={weeklyActivityData} />
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </div>
         </div>
     );
