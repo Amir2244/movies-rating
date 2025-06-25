@@ -10,7 +10,7 @@ export const YearlyEvolutionChart: React.FC<{ data: YearlyChartData[] }> = ({ da
             <CardHeader><CardTitle className="flex items-center gap-2 text-blue-600"><TrendingUp className="h-5 w-5" />Platform Evolution</CardTitle></CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
-                    <ComposedChart data={data}>
+                    <ComposedChart data={data}  margin={{top: 10, right: 30, left: 30, bottom: 0}}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
                         <XAxis dataKey="year" stroke="#64748b" />
                         <YAxis yAxisId="left" stroke="#3b82f6" />

@@ -7,18 +7,9 @@ export interface AnalyticsDocument {
     analyticsId: string;
     generatedAt: string;
     type: string;
-    metrics: Record<string, any>;
+    metrics: Record<string, never>;
     description: string;
 }
-
-export interface AnalyticsResponse {
-    analytics: AnalyticsDocument[];
-    totalElements: number;
-    totalPages: number;
-    currentPage: number;
-    pageSize: number;
-}
-
 export interface RatingChartData {
     rating: string;
     count: number;
@@ -55,7 +46,6 @@ export interface GenreChartData {
     genre: string;
     count: number;
     avgRating: number;
-    uniqueUsers: number;
 }
 
 export interface WeeklyActivityData {

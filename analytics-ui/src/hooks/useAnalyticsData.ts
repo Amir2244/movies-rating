@@ -13,7 +13,7 @@ import { extractValue } from '@/lib/formatters';
 import axios from 'axios';
 
 // Use the proxied URL instead of direct backend URL
-const API_ENDPOINT = '/analytics-api';
+const API_ENDPOINT = '/analytics-api/analytics';
 
 // Create an axios instance with default config
 const api = axios.create({

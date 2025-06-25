@@ -10,7 +10,7 @@ export const WeeklyActivityChart: React.FC<{ data: WeeklyActivityData[] }> = ({ 
             <CardHeader><CardTitle className="flex items-center gap-2 text-indigo-600"><Activity className="h-5 w-5" />Weekly Activity Patterns</CardTitle></CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={data}>
+                    <BarChart data={data}  margin={{top: 10, right: 30, left: 30, bottom: 0}}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
                         <XAxis dataKey="day" stroke="#64748b" />
                         <YAxis stroke="#64748b" />

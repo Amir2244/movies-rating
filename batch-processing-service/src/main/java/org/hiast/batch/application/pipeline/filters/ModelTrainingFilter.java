@@ -39,16 +39,11 @@ public class ModelTrainingFilter implements Filter<ALSTrainingPipelineContext, A
 
         log.info("Using column names for ALS: userCol={}, itemCol={}, ratingCol={}", userCol, itemCol, ratingCol);
 
-        // --- OPTIMIZATIONS: Set performance-related ALS parameters ---
-        // It's best if these come from ALSConfig, but providing defaults if not.
-        int numUserBlocks = 4; // Assuming getNumUserBlocks() exists in ALSConfig
-        int numItemBlocks = 4; // Assuming getNumItemBlocks() exists in ALSConfig
-        int checkpointInterval =5; // Assuming getCheckpointInterval() exists
 
-        // If not available from ALSConfig, set some common defaults (tune these!)
-        // if (numUserBlocks <= 0) numUserBlocks = 100; // Example default, tune based on data size
-        // if (numItemBlocks <= 0) numItemBlocks = 100; // Example default
-        // if (checkpointInterval <=0) checkpointInterval = 10; // Example default
+        int numUserBlocks = 2;
+        int numItemBlocks = 2;
+        int checkpointInterval = 5;
+
 
         log.info("ALS performance params: NumUserBlocks={}, NumItemBlocks={}, CheckpointInterval={}",
                 numUserBlocks, numItemBlocks, checkpointInterval);
@@ -61,14 +56,13 @@ public class ModelTrainingFilter implements Filter<ALSTrainingPipelineContext, A
                 .setUserCol(userCol)
                 .setItemCol(itemCol)
                 .setRatingCol(ratingCol)
-                .setColdStartStrategy("drop") // Good for preventing errors with new users/items in evaluation
+                .setColdStartStrategy("drop")
                 .setSeed(alsConfig.getSeed())
                 .setImplicitPrefs(alsConfig.isImplicitPrefs())
                 .setAlpha(alsConfig.getAlpha())
-                // --- OPTIMIZATIONS ADDED/MODIFIED ---
-                .setNumUserBlocks(numUserBlocks)           // Tune this!
-                .setNumItemBlocks(numItemBlocks)           // Tune this!
-                .setIntermediateStorageLevel("MEMORY_ONLY") ;      // More robust storage
+                .setNumUserBlocks(numUserBlocks)
+                .setNumItemBlocks(numItemBlocks)
+                .setIntermediateStorageLevel("MEMORY_ONLY");
 
         // Only set checkpointInterval if a checkpoint directory is configured in SparkContext
         // and the interval is positive.
@@ -85,19 +79,14 @@ public class ModelTrainingFilter implements Filter<ALSTrainingPipelineContext, A
             ALSModel model = als.fit(trainingData);
             log.info("ALS model training completed successfully.");
 
-            // Remove any debug/show calls on the model for production runs
-            // model.userFactors().show(5, false); // Example of a debug line to remove
-            // model.itemFactors().show(5, false); // Example of a debug line to remove
 
             context.setModel(model);
             context.markModelTrainingCompleted();
         } catch (Exception e) {
             log.error("Error during ALS model training: {}", e.getMessage(), e);
-            // Consider logging more details about trainingData if possible, e.g. trainingData.count()
-            // but be careful as .count() is an action and could trigger recomputation if trainingData wasn't properly cached or if fit failed early.
             log.error("Training data sample (first 3 rows, might be partial if not cached or error was early):");
             try {
-                trainingData.show(3,false);
+                trainingData.show(3, false);
             } catch (Exception showEx) {
                 log.error("Could not show trainingData sample: {}", showEx.getMessage());
             }

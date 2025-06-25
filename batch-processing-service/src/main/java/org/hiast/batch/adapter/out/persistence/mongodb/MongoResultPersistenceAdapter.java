@@ -38,9 +38,9 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
     private static final Logger log = LoggerFactory.getLogger(MongoResultPersistenceAdapter.class);
     
     // Batch size configuration with adaptive sizing
-    private static final int MIN_BATCH_SIZE = 100;
-    private static final int MAX_BATCH_SIZE = 1000;
-    private static final int INITIAL_BATCH_SIZE = 500;
+    private static final int MIN_BATCH_SIZE = 1000;
+    private static final int MAX_BATCH_SIZE = 6000;
+    private static final int INITIAL_BATCH_SIZE = 5000;
     
     // Connection pool configuration
     private static final int MAX_POOL_SIZE = 50; // Reduced to prevent overwhelming MongoDB

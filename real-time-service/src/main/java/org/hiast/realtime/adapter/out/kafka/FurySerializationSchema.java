@@ -2,8 +2,8 @@ package org.hiast.realtime.adapter.out.kafka;
 
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.fury.Fury;
-import org.apache.fury.config.Language;
 import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.realtime.util.FurySerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,12 +18,7 @@ public class FurySerializationSchema implements SerializationSchema<InteractionE
 
     @Override
     public void open(InitializationContext context) {
-        // Initialize Fury with the same configuration as in FuryDeserializationSchema
-        fury = Fury.builder()
-                .withLanguage(Language.JAVA)
-                .requireClassRegistration(false)
-                .withRefTracking(true)
-                .build();
+        fury = FurySerializationUtils.createConfiguredFury();
         LOG.info("FurySerializationSchema initialized");
     }
 
@@ -35,14 +30,9 @@ public class FurySerializationSchema implements SerializationSchema<InteractionE
         }
 
         try {
-            // Ensure Fury is initialized
-            if (fury == null) {
-                open(null);
-            }
-            
             return fury.serialize(event);
         } catch (Exception e) {
-            LOG.error("Failed to serialize event with Fury", e);
+            LOG.error("Failed to serialize event with Fury: {}", event, e);
             return new byte[0];
         }
     }
