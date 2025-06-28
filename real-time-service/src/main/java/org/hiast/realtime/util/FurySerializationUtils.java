@@ -10,6 +10,7 @@ import org.hiast.model.MovieRecommendation;
 import org.hiast.model.RatingValue;
 import org.hiast.realtime.domain.model.InteractionEvent;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -35,7 +36,7 @@ public final class FurySerializationUtils {
                 .withLanguage(Language.JAVA)
                 .requireClassRegistration(true)
                 .withAsyncCompilation(true)
-                .withRefTracking(true)
+                .withRefTracking(false)
                 .build();
 
         // Register all domain classes
@@ -66,6 +67,7 @@ public final class FurySerializationUtils {
         fury.register(Long.class);
         fury.register(Float.class);
         fury.register(Integer.class);
+        fury.register(java.time.Instant.class);
 
         // Collection implementations
         fury.register(ArrayList.class);
