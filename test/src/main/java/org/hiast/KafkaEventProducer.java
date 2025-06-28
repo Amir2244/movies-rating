@@ -1,7 +1,6 @@
 package org.hiast;
 
 import org.apache.fury.Fury;
-import org.apache.fury.config.Language;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -21,11 +20,10 @@ import org.hiast.ids.UserId;
 import org.hiast.model.InteractionEventDetails;
 import org.hiast.model.MovieRecommendation;
 import org.hiast.model.RatingValue;
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
