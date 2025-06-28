@@ -6,7 +6,7 @@ import org.hiast.realtime.application.port.in.ProcessInteractionEventUseCase;
 import org.hiast.realtime.application.port.out.RecommendationNotifierPort;
 import org.hiast.realtime.application.port.out.UserFactorPort;
 import org.hiast.realtime.application.port.out.VectorSearchPort;
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 import org.hiast.model.factors.UserFactor;
 import org.hiast.model.MovieRecommendation;
 import org.slf4j.Logger;

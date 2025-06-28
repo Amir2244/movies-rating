@@ -8,9 +8,8 @@ import org.hiast.ids.UserId;
 import org.hiast.model.InteractionEventDetails;
 import org.hiast.model.MovieRecommendation;
 import org.hiast.model.RatingValue;
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

@@ -9,7 +9,7 @@ import org.hiast.realtime.adapter.in.flink.RecommendationRichMapFunction;
 import org.hiast.realtime.adapter.in.kafka.FuryDeserializationSchema;
 import org.hiast.realtime.adapter.out.kafka.FurySerializationSchema;
 import org.hiast.realtime.config.AppConfig;
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
