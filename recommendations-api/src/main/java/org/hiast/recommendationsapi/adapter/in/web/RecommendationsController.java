@@ -1,5 +1,6 @@
 package org.hiast.recommendationsapi.adapter.in.web;
 
+import org.hiast.recommendationsapi.adapter.in.web.response.EventWithRecommendationsResponse;
 import org.hiast.recommendationsapi.adapter.in.web.response.UserRecommendationsResponse;
 import org.hiast.recommendationsapi.adapter.in.web.mapper.RecommendationsResponseMapper;
 import org.hiast.recommendationsapi.application.port.in.GetUserRecommendationsUseCase;
@@ -7,9 +8,13 @@ import org.hiast.recommendationsapi.application.port.in.GetBatchUserRecommendati
 import org.hiast.recommendationsapi.domain.exception.InvalidRecommendationRequestException;
 import org.hiast.recommendationsapi.domain.exception.UserRecommendationsNotFoundException;
 import org.hiast.model.UserRecommendations;
+import org.hiast.model.InteractionEvent;
+import org.hiast.recommendationsapi.adapter.in.web.request.InteractionEventRequest;
+import org.hiast.recommendationsapi.application.service.RealTimeEventService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -30,31 +35,36 @@ import java.util.stream.Stream;
 @RequestMapping("/recommendations")
 @CrossOrigin(origins = "*")
 public class RecommendationsController {
-    
+
     private static final Logger log = LoggerFactory.getLogger(RecommendationsController.class);
-    
+
     private final GetUserRecommendationsUseCase getUserRecommendationsUseCase;
     private final GetBatchUserRecommendationsUseCase getBatchUserRecommendationsUseCase;
     private final RecommendationsResponseMapper responseMapper;
-    
+    private final RealTimeEventService realTimeEventService;
+
     /**
      * Constructor for dependency injection.
      *
      * @param getUserRecommendationsUseCase      The use case for retrieving user recommendations.
      * @param getBatchUserRecommendationsUseCase The use case for retrieving batch user recommendations.
      * @param responseMapper                     The mapper for converting domain models to response DTOs.
+     * @param realTimeEventService               The service for processing real-time rating events.
      */
     public RecommendationsController(GetUserRecommendationsUseCase getUserRecommendationsUseCase,
                                    GetBatchUserRecommendationsUseCase getBatchUserRecommendationsUseCase,
-                                   RecommendationsResponseMapper responseMapper) {
+                                   RecommendationsResponseMapper responseMapper,
+                                   RealTimeEventService realTimeEventService) {
         this.getUserRecommendationsUseCase = Objects.requireNonNull(getUserRecommendationsUseCase, 
             "getUserRecommendationsUseCase cannot be null");
         this.getBatchUserRecommendationsUseCase = Objects.requireNonNull(getBatchUserRecommendationsUseCase,
             "getBatchUserRecommendationsUseCase cannot be null");
         this.responseMapper = Objects.requireNonNull(responseMapper, 
             "responseMapper cannot be null");
+        this.realTimeEventService = Objects.requireNonNull(realTimeEventService, 
+            "realTimeEventService cannot be null");
     }
-    
+
     /**
      * Retrieves recommendations for a specific user.
      *
@@ -64,16 +74,16 @@ public class RecommendationsController {
     @GetMapping("/users/{userId}")
     public ResponseEntity<UserRecommendationsResponse> getUserRecommendations(@PathVariable int userId) {
         log.info("Received request for recommendations for user: {}", userId);
-        
+
         try {
             // Validate user ID
             if (userId <= 0) {
                 log.warn("Invalid user ID: {}", userId);
                 return ResponseEntity.badRequest().build();
             }
-            
+
             Optional<UserRecommendations> recommendations = getUserRecommendationsUseCase.getUserRecommendations(userId);
-            
+
             if (recommendations.isPresent()) {
                 UserRecommendationsResponse response = responseMapper.toResponse(recommendations.get());
                 log.info("Successfully retrieved {} recommendations for user: {}", 
@@ -94,7 +104,7 @@ public class RecommendationsController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Retrieves a limited number of recommendations for a specific user.
      *
@@ -107,22 +117,22 @@ public class RecommendationsController {
             @PathVariable int userId, 
             @PathVariable int limit) {
         log.info("Received request for top {} recommendations for user: {}", limit, userId);
-        
+
         try {
             // Validate parameters
             if (userId <= 0) {
                 log.warn("Invalid user ID: {}", userId);
                 return ResponseEntity.badRequest().build();
             }
-            
+
             if (limit <= 0 || limit > 10) { // Reasonable upper limit
                 log.warn("Invalid limit: {} (must be between 1 and 100)", limit);
                 return ResponseEntity.badRequest().build();
             }
-            
+
             Optional<UserRecommendations> recommendations = 
                 getUserRecommendationsUseCase.getUserRecommendations(userId, limit);
-            
+
             if (recommendations.isPresent()) {
                 UserRecommendationsResponse response = responseMapper.toResponse(recommendations.get());
                 log.info("Successfully retrieved {} recommendations for user: {} (limit: {})", 
@@ -143,7 +153,7 @@ public class RecommendationsController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Retrieves recommendations for multiple users in batch.
      *
@@ -154,19 +164,19 @@ public class RecommendationsController {
     public ResponseEntity<Map<String, UserRecommendationsResponse>> getBatchUserRecommendations(
             @RequestParam("userIds") String userIds) {
         log.info("Received batch request for user IDs: {}", userIds);
-        
+
         try {
             List<Integer> userIdList = parseUserIds(userIds);
-            
+
             Map<Integer, UserRecommendations> recommendations = 
                 getBatchUserRecommendationsUseCase.getBatchUserRecommendations(userIdList);
-            
+
             Map<String, UserRecommendationsResponse> response = convertBatchResponse(recommendations);
-            
+
             log.info("Successfully retrieved batch recommendations for {} out of {} users", 
                 response.size(), userIdList.size());
             return ResponseEntity.ok(response);
-            
+
         } catch (InvalidRecommendationRequestException e) {
             log.warn("Invalid batch request: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -175,7 +185,7 @@ public class RecommendationsController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Retrieves limited recommendations for multiple users in batch.
      *
@@ -188,19 +198,19 @@ public class RecommendationsController {
             @RequestParam("userIds") String userIds,
             @PathVariable int limit) {
         log.info("Received batch request for top {} recommendations for user IDs: {}", limit, userIds);
-        
+
         try {
             List<Integer> userIdList = parseUserIds(userIds);
-            
+
             Map<Integer, UserRecommendations> recommendations = 
                 getBatchUserRecommendationsUseCase.getBatchUserRecommendations(userIdList, limit);
-            
+
             Map<String, UserRecommendationsResponse> response = convertBatchResponse(recommendations);
-            
+
             log.info("Successfully retrieved batch recommendations for {} out of {} users (limit: {})", 
                 response.size(), userIdList.size(), limit);
             return ResponseEntity.ok(response);
-            
+
         } catch (InvalidRecommendationRequestException e) {
             log.warn("Invalid batch request with limit {}: {}", limit, e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -209,7 +219,7 @@ public class RecommendationsController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Parses comma-separated user IDs string into a list of Integer objects.
      */
@@ -223,7 +233,7 @@ public class RecommendationsController {
             throw new InvalidRecommendationRequestException("Invalid user ID format: " + userIdsString);
         }
     }
-    
+
     /**
      * Converts batch domain results to response DTOs.
      */
@@ -236,5 +246,39 @@ public class RecommendationsController {
             response.put(userIdKey, userResponse);
         }
         return response;
+    }
+
+    /**
+     * Accepts a real-time user interaction event, sends it to Kafka for processing,
+     * and returns both the processed event and any recommendations generated for the user.
+     * @param request The interaction event request payload.
+     * @return 202 Accepted with the processed event and recommendations if successful, error otherwise.
+     */
+    @PostMapping("/events/interaction")
+    public ResponseEntity<EventWithRecommendationsResponse> submitInteractionEventWithRecommendations(
+            @RequestBody InteractionEventRequest request) {
+        try {
+            log.info("Processing interaction event with recommendations for user ID: {}", request.getUserId());
+            RealTimeEventService.EventWithRecommendations result = 
+                realTimeEventService.processInteractionEventWithRecommendations(request);
+
+            EventWithRecommendationsResponse response = 
+                new EventWithRecommendationsResponse(result.getEvent(), result.getRecommendations());
+
+            if (result.getRecommendations() != null) {
+                log.info("Successfully retrieved {} recommendations for user ID: {}", 
+                    result.getRecommendations().size(), request.getUserId());
+            } else {
+                log.info("No recommendations found for user ID: {}", request.getUserId());
+            }
+
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid interaction event request: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Failed to process interaction event with recommendations", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }
