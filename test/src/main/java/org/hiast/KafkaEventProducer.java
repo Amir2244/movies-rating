@@ -14,6 +14,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.hiast.realtime.util.FurySerializationUtils;
 import org.hiast.events.EventType;
 import org.hiast.ids.MovieId;
 import org.hiast.ids.UserId;
@@ -51,7 +52,7 @@ public class KafkaEventProducer {
     private static final int POLL_TIMEOUT_MS = 10000; // 10 seconds
 
     // Configuration for random event generation
-    private static final int DEFAULT_NUM_EVENTS = 1000; // Default number of events to send
+    private static final int DEFAULT_NUM_EVENTS = 1; // Default number of events to send
     private static final int MIN_USER_ID = 1;
     private static final int MAX_USER_ID = 10000;
     private static final int MIN_MOVIE_ID = 100000;
@@ -112,7 +113,7 @@ public class KafkaEventProducer {
 
         InteractionEventDetails.Builder builder = new InteractionEventDetails.Builder(
                 userId, eventType, Instant.now())
-                .withMovieId(movieId);
+                .withMovieId(MovieId.of(195791));
 
         // Add rating value if the event type is RATING_GIVEN
         if (eventType == EventType.RATING_GIVEN) {
@@ -120,7 +121,7 @@ public class KafkaEventProducer {
         }
 
         InteractionEventDetails details = builder.build();
-        return new InteractionEvent(userId, movieId, details);
+        return new InteractionEvent(userId, MovieId.of(195791), details);
     }
 
     public static void main(String[] args) {
@@ -141,24 +142,8 @@ public class KafkaEventProducer {
 
         System.out.println("Preparing to send " + numEvents + " random events to Kafka topic: " + INPUT_TOPIC);
 
-        // 1. Initialize Fury, configured exactly like in the Flink DeserializationSchema
-        Fury fury = Fury.builder()
-                .withLanguage(Language.JAVA)
-                .requireClassRegistration(true)
-                .withAsyncCompilation(true)
-                .withRefTracking(true)
-                .build();
-        fury.register(MovieRecommendation.class);
-        fury.register(InteractionEvent.class);
-        fury.register(MovieId.class);
-        fury.register(Integer.class);
-        fury.register(UserId.class);
-        fury.register(InteractionEventDetails.class);
-        fury.register(Float.class);
-        fury.register(RatingValue.class);
-        fury.register(Long.class);
-        fury.register(EventType.class);
-        fury.register(List.class);
+        // 1. Initialize Fury using FurySerializationUtils for consistent configuration
+        Fury fury = FurySerializationUtils.createConfiguredFury();
         // 2. Set up Kafka Producer properties
         Properties producerProps = new Properties();
         producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_BROKER);
@@ -169,8 +154,6 @@ public class KafkaEventProducer {
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failureCount = new AtomicInteger(0);
 
-        // Keep track of a sample user ID for recommendations
-        final long sampleUserId = generateRandomUserId().getUserId();
 
         try (Producer<String, byte[]> producer = new KafkaProducer<>(producerProps)) {
             for (int i = 0; i < numEvents; i++) {
@@ -230,17 +213,16 @@ public class KafkaEventProducer {
             int receivedCount = 0;
             int attempts = 0;
             int maxAttempts = 10; // Increase attempts for multiple events
-
+            InteractionEvent processedEvent=null;
             while (receivedCount <= Math.min(numEvents, 100000) && attempts < maxAttempts) { // Limit to 10 events to avoid too much output
                 ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
-
                 if (records.isEmpty()) {
                     System.out.println("No records received yet. Waiting... (Attempt " + (++attempts) + "/" + maxAttempts + ")");
                 } else {
                     for (ConsumerRecord<String, byte[]> record : records) {
                         try {
                             // 9. Deserialize the processed event
-                            InteractionEvent processedEvent = (InteractionEvent) fury.deserialize(record.value());
+                             processedEvent = (InteractionEvent) fury.deserialize(record.value());
                             receivedCount++;
                             System.out.println("\nReceived processed event #" + receivedCount + ":");
                             System.out.println("  User ID: " + processedEvent.getUserId().getUserId());
@@ -268,7 +250,7 @@ public class KafkaEventProducer {
 
                 // After receiving processed events, listen for recommendations
                 System.out.println("\nWaiting for recommendations on topic: " + RECOMMENDATIONS_TOPIC);
-                listenForRecommendations(fury, sampleUserId,numEvents);
+                listenForRecommendations(fury,processedEvent.getUserId().getUserId() ,numEvents);
             }
         }
     }
