@@ -67,7 +67,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
 
       <div className="border-t border-slate-200 mt-4 p-4">
         <h2 className={`text-lg font-semibold mb-4 ${!isExpanded && 'hidden'}`}>Real-Time</h2>
-        <Link href="/events" className="flex items-center p-2 text-slate-600 hover:bg-slate-100 rounded-md">
+        <Link href="/real-time" className="flex items-center p-2 text-slate-600 hover:bg-slate-100 rounded-md">
           <Zap className="w-4 h-4 mr-2" />
           {isExpanded && <span>Live Events</span>}
         </Link>

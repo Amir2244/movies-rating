@@ -41,13 +41,8 @@ const RecommendationsPage: React.FC = () => {
 
     try {
       const limitParam = limit && !isNaN(parseInt(limit)) ? parseInt(limit) : 10;
-      let response;
-      if (parseInt(limit) <10){
-         response = await axios.get(`http://localhost:8080/recommendations-api/recommendations/users/${userId}/top/${limitParam}`);
-      }
-      else {
-         response = await axios.get(`http://localhost:8080/recommendations-api/recommendations/users/${userId}?limit=${limitParam}`);
-      }
+      // Always use the /top/{limit} endpoint for all limit values
+      const response = await axios.get(`http://localhost:8080/recommendations-api/recommendations/users/${userId}/top/${limitParam}`);
       setRecommendations(response.data);
     } catch (err) {
       if (axios.isAxiosError(err)) {
