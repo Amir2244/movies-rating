@@ -8,6 +8,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.hiast.model.MovieRecommendation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -25,15 +26,17 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 public class KafkaConsumerService {
-    private static final String KAFKA_BROKER = "localhost:9094";
+    private static final String DEFAULT_KAFKA_BROKER = "kafka:9092";
     private static final String RECOMMENDATIONS_TOPIC = "recommendations";
-    private static final int POLL_TIMEOUT_MS = 10000; // 5 seconds
+    private static final int POLL_TIMEOUT_MS = 10000; // 10 seconds
     private static final int MAX_ATTEMPTS = 3; // Maximum number of attempts to poll for recommendations
 
+    private final String kafkaBroker;
     private final Fury fury;
     private final ExecutorService executorService;
 
-    public KafkaConsumerService() {
+    public KafkaConsumerService(@Value("${spring.kafka.bootstrap-servers:#{null}}") String kafkaBroker) {
+        this.kafkaBroker = kafkaBroker != null && !kafkaBroker.isEmpty() ? kafkaBroker : DEFAULT_KAFKA_BROKER;
         this.fury = FurySerializationUtils.createConfiguredFury();
         this.executorService = Executors.newCachedThreadPool();
     }
@@ -72,7 +75,7 @@ public class KafkaConsumerService {
             int attempts = 0;
             while (attempts < MAX_ATTEMPTS) {
                 ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
-                
+
                 if (records.isEmpty()) {
                     attempts++;
                     continue;
@@ -92,17 +95,17 @@ public class KafkaConsumerService {
                         System.err.println("Failed to deserialize recommendations: " + e.getMessage());
                     }
                 }
-                
+
                 attempts++;
             }
         }
-        
+
         return null;
     }
 
-    private static Properties getProperties() {
+    private Properties getProperties() {
         Properties consumerProps = new Properties();
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_BROKER);
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBroker);
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "recommendations-reader-group");
         consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());

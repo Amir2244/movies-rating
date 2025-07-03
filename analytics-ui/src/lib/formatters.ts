@@ -34,6 +34,7 @@ export const formatNumber = (num: number): string => {
  * @param value - The value to parse, which can be a number or an object.
  * @returns The extracted number.
  */
+/* eslint-disable */
 export const extractValue = (value: any): number => {
     if (typeof value === 'object' && value !== null) {
         if (value.$numberLong) return parseInt(value.$numberLong, 10);
@@ -41,3 +42,4 @@ export const extractValue = (value: any): number => {
     }
     return typeof value === 'number' ? value : 0;
 };
+

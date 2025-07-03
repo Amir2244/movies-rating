@@ -14,7 +14,7 @@ import java.util.Properties;
 
 @Service
 public class KafkaProducerService {
-    private static final String KAFKA_BROKER = "localhost:9094";
+    private static final String KAFKA_BROKER = "kafka:9092";
     private static final String INPUT_TOPIC = "user_interactions";
     private final Producer<String, byte[]> producer;
     private final Fury fury;

@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/analytics-ui/analytics-ui.iml" filepath="$PROJECT_DIR$/analytics-ui/analytics-ui.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/movies-rating.iml" filepath="$PROJECT_DIR$/.idea/movies-rating.iml" />
+      <module fileurl="file://$PROJECT_DIR$/recommendations-api/recommendations-api.iml" filepath="$PROJECT_DIR$/recommendations-api/recommendations-api.iml" />
     </modules>
   </component>
 </project>

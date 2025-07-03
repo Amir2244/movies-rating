@@ -7,7 +7,7 @@ export interface AnalyticsDocument {
     analyticsId: string;
     generatedAt: string;
     type: string;
-    metrics: Record<string, never>;
+    metrics: Record<string, any>;
     description: string;
 }
 export interface RatingChartData {

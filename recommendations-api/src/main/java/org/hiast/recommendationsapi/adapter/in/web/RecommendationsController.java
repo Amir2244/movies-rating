@@ -8,7 +8,6 @@ import org.hiast.recommendationsapi.application.port.in.GetBatchUserRecommendati
 import org.hiast.recommendationsapi.domain.exception.InvalidRecommendationRequestException;
 import org.hiast.recommendationsapi.domain.exception.UserRecommendationsNotFoundException;
 import org.hiast.model.UserRecommendations;
-import org.hiast.model.InteractionEvent;
 import org.hiast.recommendationsapi.adapter.in.web.request.InteractionEventRequest;
 import org.hiast.recommendationsapi.application.service.RealTimeEventService;
 import org.slf4j.Logger;

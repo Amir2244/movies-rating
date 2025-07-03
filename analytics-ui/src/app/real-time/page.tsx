@@ -113,7 +113,7 @@ const RealTimeEventsPage: React.FC = () => {
       };
 
       const response = await axios.post(
-        'http://localhost:8080/recommendations-api/recommendations/events/interaction',
+        'http://localhost:8082/recommendations-api/recommendations/events/interaction',
         payload
       );
 
