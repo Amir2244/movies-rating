@@ -1,6 +1,6 @@
 package org.hiast.realtime.application.port.in;
 
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 
 /**
  * Input Port (Use Case Interface).

@@ -5,7 +5,7 @@ import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.configuration.Configuration;
 import org.hiast.realtime.application.port.in.ProcessInteractionEventUseCase;
 import org.hiast.realtime.application.service.RealTimeRecommendationService;
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 import org.hiast.realtime.adapter.out.kafka.KafkaNotifierAdapter;
 import org.hiast.realtime.adapter.out.redis.RedisUserFactorAdapter;
 import org.hiast.realtime.adapter.out.redis.RedisVectorSearchAdapter;
@@ -69,6 +69,12 @@ public class RecommendationRichMapFunction extends RichMapFunction<InteractionEv
     @Override
     public InteractionEvent map(InteractionEvent event) throws Exception {
         // The use case is now initialized and ready to be used.
+        if (event == null) {
+            LOG.warn("Received null event");
+            processInteractionEventUseCase.processEvent(null);
+            return null;
+        }
+
         LOG.info("Processing event for user: {}", event.getUserId().getUserId());
         processInteractionEventUseCase.processEvent(event);
 

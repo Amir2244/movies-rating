@@ -1,0 +1,48 @@
+# Target directory (Maven build output)
+target/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Maven
+target/*
+!target/recommendations-api-0.0.1.war
+.mvn
+mvnw
+mvnw.cmd
+# Docker
+.dockerignore
+compose.yaml
+docker-compose.yml
+
+# Documentation
+README.md
+HELP.md
+*.md
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# Node modules (if any)
+node_modules/ 

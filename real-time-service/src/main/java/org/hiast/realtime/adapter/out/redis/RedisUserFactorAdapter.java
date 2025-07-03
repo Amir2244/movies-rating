@@ -7,8 +7,6 @@ import org.hiast.realtime.application.port.out.UserFactorPort;
 import org.hiast.util.VectorSerializationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.UnifiedJedis;
 
 import java.util.Optional;
@@ -45,7 +43,7 @@ public class RedisUserFactorAdapter implements UserFactorPort {
             }
 
             float[] vector = VectorSerializationUtil.deserializeVector(userVectorBytes);
-            return Optional.of(new UserFactor(userId, vector));
+            return Optional.of(new UserFactor<>(userId, vector));
         } catch (Exception e) {
             LOG.error("Failed to retrieve user factor for user: {} from key: {}", userId.getUserId(), redisKey, e);
             return Optional.empty();

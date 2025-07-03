@@ -35,8 +35,42 @@ services:
     ports:
       - "8080:8080"
       - "7077:7077"
-    volumes:
-      - ./batch-processing-service/target/batch-processing-service-0.0.1.jar:/opt/spark-apps/batch-processing-service.jar
+    networks:
+      - app-network
+
+  batch-processing-service:
+    build:
+      context: ./batch-processing-service
+      dockerfile: Dockerfile
+    container_name: batch-processing-service
+    depends_on:
+      - spark-master
+      - namenode
+      - datanode
+      - redis
+    command: >
+      bash -c "
+        echo 'Waiting for Spark Master to be ready...'
+        while ! nc -z spark-master 7077; do
+          sleep 1;
+        done;
+
+        echo 'Spark Master is ready. Attempting to submit Spark job...'
+
+        MAX_RETRIES=5
+        RETRY_COUNT=0
+        until /spark/bin/spark-submit --master spark://spark-master:7077 --class org.hiast.batch.launcher.AppLauncher /opt/spark-apps/batch-processing-service.jar analytics; do
+          RETRY_COUNT=$((RETRY_COUNT+1))
+          if [ ${RETRY_COUNT} -ge ${MAX_RETRIES} ]; then
+            echo 'Failed to submit Spark job after ${MAX_RETRIES} attempts. Exiting.'
+            exit 1
+          fi
+          echo 'Job submission failed, retrying in 5 seconds... (Attempt ${RETRY_COUNT}/${MAX_RETRIES})'
+          sleep 5
+        done
+
+        echo 'Spark job submitted successfully.'
+      "
     networks:
       - app-network
 
@@ -217,6 +251,59 @@ services:
       - ./docker-volumes/mongo_data:/data/db
     networks:
       - app-network
+
+  analytics-api:
+    build:
+      context: ./analytics-api
+      dockerfile: Dockerfile
+    container_name: analytics-api
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATA_MONGODB_HOST=mongodb
+      - SPRING_DATA_MONGODB_PORT=27017
+      - SPRING_DATA_MONGODB_DATABASE=movie-recommendations
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+
+  analytics-ui:
+    build:
+      context: ./analytics-ui
+      dockerfile: Dockerfile
+    container_name: analytics-ui
+    ports:
+      - "3000:3000"
+    environment:
+      - ANALYTICS_API_URL=http://analytics-api:8083
+    depends_on:
+      - analytics-api
+      - recommendations-api
+    networks:
+      - app-network
+
+  recommendations-api:
+    build:
+      context: ./recommendations-api
+      dockerfile: Dockerfile
+    container_name: recommendations-api
+    ports:
+    - "8082:8080"
+    environment:
+      - SPRING_DATA_MONGODB_HOST=mongodb
+      - SPRING_DATA_MONGODB_PORT=27017
+      - SPRING_DATA_MONGODB_DATABASE=movie-recommendations
+    depends_on:
+      - mongodb
+      - kafka
+    networks:
+      - app-network
+    # This service requires the WAR file to be built before docker-compose build
+    # Use one of the provided build scripts:
+    # On Windows: build-recommendations-api.bat
+    # On Linux/Unix: ./build-recommendations-api.sh (make it executable first with: chmod +x build-recommendations-api.sh)
+
 
 volumes:
   namenode_data:

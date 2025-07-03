@@ -33,6 +33,7 @@
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="analytics-api" options="-parameters" />
+      <module name="real-time-service" options="" />
       <module name="recommendations-api" options="-parameters" />
     </option>
   </component>

@@ -2,7 +2,7 @@ package org.hiast.realtime.adapter.out.kafka;
 
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.fury.Fury;
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 import org.hiast.realtime.util.FurySerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

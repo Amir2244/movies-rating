@@ -21,7 +21,11 @@ public class AppConfig {
     }
 
     public String getProperty(String key) {
-        return properties.getProperty(key);
+        String value = properties.getProperty(key);
+        if (value == null) {
+            throw new RuntimeException("Property not found: " + key);
+        }
+        return value;
     }
 
     public int getIntProperty(String key) {

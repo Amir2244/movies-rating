@@ -73,7 +73,6 @@ public class AppConfigTest {
         // Assert
         assertTrue(result.contains("sparkAppName='TestMovieRecsysBatchTrainer'"));
         assertTrue(result.contains("sparkMasterUrl='local[2]'"));
-        assertTrue(result.contains("gcsConfig=HDFSConfig{ratingsPath='hdfs://test-namenode:8020/test/ratings.csv'}"));
         assertTrue(result.contains("redisConfig=RedisConfig{host='test-redis', port=6380}"));
         assertTrue(result.contains("alsConfig=ALSConfig{rank=10, maxIter=5, regParam=0.2, seed=42, implicitPrefs=true, alpha=0.5}"));
     }

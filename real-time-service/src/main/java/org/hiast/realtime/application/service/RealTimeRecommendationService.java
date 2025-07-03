@@ -1,11 +1,12 @@
 
 package org.hiast.realtime.application.service;
 
+import org.hiast.ids.MovieId;
 import org.hiast.realtime.application.port.in.ProcessInteractionEventUseCase;
 import org.hiast.realtime.application.port.out.RecommendationNotifierPort;
 import org.hiast.realtime.application.port.out.UserFactorPort;
 import org.hiast.realtime.application.port.out.VectorSearchPort;
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 import org.hiast.model.factors.UserFactor;
 import org.hiast.model.MovieRecommendation;
 import org.slf4j.Logger;
@@ -67,9 +68,19 @@ public class RealTimeRecommendationService implements ProcessInteractionEventUse
         int numRecommendations = Math.max(1, (int) Math.ceil(eventWeight * TOP_N_RECOMMENDATIONS / 5.0));
         LOG.info("Generating {} recommendations based on event weight {}", numRecommendations, eventWeight);
 
-        // Pass the event weight to the vector search port to influence the rating calculation
-        List<MovieRecommendation> recommendations = vectorSearchPort.findSimilarItems(userFactor, numRecommendations, eventWeight);
-        LOG.info("Generated {} recommendations with event weight {} applied to ratings", recommendations.size(), eventWeight);
+        // Get the movie ID from the interaction event
+        MovieId movieId = event.getMovieId();
+        if (movieId == null) {
+            LOG.warn("Movie ID is null for event from user: {}", event.getUserId().getUserId());
+            return;
+        }
+        LOG.info("Finding similar items based on movie ID: {}", movieId.getMovieId());
+
+        // Pass the movie ID and event weight to the vector search port to find similar movies
+        // This performs a vector search between the movie vector and other movie vectors
+        List<MovieRecommendation> recommendations = vectorSearchPort.findSimilarItemsByMovie(userFactor, movieId, numRecommendations, eventWeight);
+        LOG.info("Generated {} recommendations based on movie ID {} with event weight {} applied to ratings", 
+                recommendations.size(), movieId.getMovieId(), eventWeight);
 
         if (recommendations.isEmpty()) {
             LOG.info("No recommendations found for user: {}", event.getUserId().getUserId());

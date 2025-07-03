@@ -13,18 +13,18 @@ import { extractValue } from '@/lib/formatters';
 import axios from 'axios';
 
 // Use the proxied URL instead of direct backend URL
-const API_ENDPOINT = '/analytics-api/analytics';
+const API_ENDPOINT = 'http://localhost:8083/analytics-api/analytics';
 
-// Create an axios instance with default config
-const api = axios.create({
-    baseURL: API_ENDPOINT,
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    },
-    withCredentials: true // Enable sending credentials
-});
+// // Create an axios instance with default config
+// const api = axios.create({
+//     baseURL: API_ENDPOINT,
+//     timeout: 10000,
+//     headers: {
+//         'Content-Type': 'application/json',
+//         'Accept': 'application/json'
+//     },
+//     withCredentials: true // Enable sending credentials
+// });
 
 export const useAnalyticsData = () => {
     // State for the raw data from the API
@@ -42,7 +42,7 @@ export const useAnalyticsData = () => {
                 setIsLoading(true);
                 setError(null);
 
-                const response = await api.get('');
+                const response = await axios.get("http://localhost:8083/analytics-api/analytics");
                 console.log('API Response:', response.data); // Debug log
 
                 // Extract the analytics array from the response

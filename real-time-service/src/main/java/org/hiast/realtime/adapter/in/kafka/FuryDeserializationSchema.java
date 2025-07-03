@@ -4,7 +4,7 @@ package org.hiast.realtime.adapter.in.kafka;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.fury.Fury;
-import org.hiast.realtime.domain.model.InteractionEvent;
+import org.hiast.model.InteractionEvent;
 import org.hiast.realtime.util.FurySerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +35,17 @@ public class FuryDeserializationSchema implements DeserializationSchema<Interact
             return (InteractionEvent) fury.deserialize(message);
         } catch (Exception e) {
             LOG.error("Failed to deserialize message with Fury", e);
-            return null;
+            // Reinitialize Fury instance to handle potential reference tracking issues
+            LOG.info("Reinitializing Fury instance after deserialization failure");
+            fury = FurySerializationUtils.createConfiguredFury();
+
+            // Try one more time with the new instance
+            try {
+                return (InteractionEvent) fury.deserialize(message);
+            } catch (Exception retryException) {
+                LOG.error("Failed to deserialize message with Fury after reinitialization", retryException);
+                return null;
+            }
         }
     }
 
