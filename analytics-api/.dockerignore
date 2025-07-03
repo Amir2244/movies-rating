@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Maven
+target/*
+!target/analytics-api-0.0.1.war
+.mvn
+mvnw
+mvnw.cmd
+
+# IDE files
+.idea
+*.iml
+.vscode
+*.sublime-*
+.project
+.classpath
+.settings
+
+# Logs
+logs
+*.log
+
+# Documentation
+README.md
+HELP.md
+API_EXAMPLES.md
+
+# Temporary files
+*~
+*.swp
+*.swo
