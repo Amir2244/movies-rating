@@ -69,6 +69,12 @@ public class RecommendationRichMapFunction extends RichMapFunction<InteractionEv
     @Override
     public InteractionEvent map(InteractionEvent event) throws Exception {
         // The use case is now initialized and ready to be used.
+        if (event == null) {
+            LOG.warn("Received null event");
+            processInteractionEventUseCase.processEvent(null);
+            return null;
+        }
+
         LOG.info("Processing event for user: {}", event.getUserId().getUserId());
         processInteractionEventUseCase.processEvent(event);
 
