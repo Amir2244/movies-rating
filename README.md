@@ -237,6 +237,47 @@ movies-rating/
 
 5. **Code Quality**: Follow SOLID principles and maintain clean code practices.
 
+## CI/CD Pipeline
+
+The project includes a Jenkins pipeline (defined in `Jenkinsfile`) that automates the build, test, and deployment process.
+
+### Pipeline Stages
+
+1. **Checkout**: Retrieves the source code from the repository
+2. **Build Shared Kernel**: Builds the shared domain models and utilities
+3. **Build Services**: Builds all service components in parallel
+4. **Run Tests**: Executes tests for all services in parallel
+5. **Build Docker Images**: Creates Docker images for all services
+6. **Push Docker Images**: Pushes the images to Docker Hub
+7. **Prepare Docker Volumes**: Ensures all necessary Docker volumes exist
+
+### Docker Volumes Management
+
+The system uses several Docker volumes for persistent data storage:
+
+- **namenode_data**: Stores HDFS namenode data
+- **datanode_data**: Stores HDFS datanode data
+- **redis_data**: Stores Redis data including vector indexes
+- **mongo_data**: Stores MongoDB data
+- **kafka_data**: Stores Kafka logs and data
+
+These volumes are critical for data persistence across container restarts and deployments. The CI/CD pipeline:
+
+1. Creates the necessary volume directories if they don't exist
+2. Ensures Docker volumes are properly configured
+3. Preserves volumes during cleanup to maintain data integrity
+
+While the batch-processing-service and real-time-service don't directly use volumes in their Dockerfiles, they depend on services that do use volumes (like Redis, Kafka, HDFS). The pipeline ensures these dependencies have their volumes properly managed.
+
+### Volume Backup Considerations
+
+For production environments, consider implementing a backup strategy for these volumes:
+
+```bash
+# Example backup command for a Docker volume
+docker run --rm -v namenode_data:/source -v /path/on/host:/backup alpine tar -czf /backup/namenode_backup.tar.gz -C /source .
+```
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
