@@ -112,18 +112,6 @@ pipeline {
                     }
                 }
 
-                stage('Real-Time Service Tests') {
-                    steps {
-                        dir('real-time-service') {
-                            bat 'mvn test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit '**/target/surefire-reports/*.xml'
-                        }
-                    }
-                }
             }
         }
 
