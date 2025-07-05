@@ -1,10 +1,14 @@
 pipeline {
     agent any
 
+
+    tools {
+        maven 'Maven-3.9'
+    }
+
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhublogin')
         VERSION_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
-        maven 'Maven-3.9'
     }
 
     stages {
