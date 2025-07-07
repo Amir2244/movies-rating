@@ -10,7 +10,7 @@
 
     <name>Batch Processing Service</name>
     <description>Microservice responsible for batch training of the recommendation model using Spark ALS, reading from
-        HDFS on Dataproc.
+        HDFS.
     </description>
 
     <distributionManagement>
