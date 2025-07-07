@@ -7,7 +7,6 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhublogin')
-        DOCKER_HUB_USER = DOCKERHUB_CREDENTIALS_USR
         VERSION_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
     }
 
@@ -97,10 +96,12 @@ pipeline {
                             'real-time-service',
                             'analytics-ui'
                         ]
+
                         def builds = services.collectEntries { serviceName ->
                             ["Build & Push ${serviceName}": {
                             try {
-                                def imageName = "${DOCKER_HUB_USER}/movies-rating-${serviceName}"
+                                    def imageName = "${DOCKERHUB_CREDENTIALS_USR}/movies-rating-${serviceName}"
+
                                     def dockerImage = docker.build("${imageName}:${VERSION_TAG}", "./${serviceName}")
 
                                     echo "Pushing image ${imageName}:${VERSION_TAG}"
