@@ -37,7 +37,6 @@
         <slf4j.version>2.0.12</slf4j.version>
         <junit.version>4.13.2</junit.version>
         <mockito.version>5.11.0</mockito.version>
-        <maven.test.skip>true</maven.test.skip>
         <log4j2.version>2.23.1</log4j2.version>
     </properties>
 
