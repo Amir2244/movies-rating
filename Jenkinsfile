@@ -25,7 +25,7 @@ pipeline {
             }
         }
 
-        stage('Build Services (Parallel)') {
+        stage('Build Services') {
             steps {
                 parallel(
                     'Analytics API': {
@@ -58,7 +58,7 @@ pipeline {
             }
         }
 
-        stage('Run Tests (Parallel)') {
+        stage('Run Tests') {
             steps {
                 parallel(
                     'Analytics API Tests': {
@@ -85,7 +85,7 @@ pipeline {
             }
         }
 
-        stage('Build and Push Docker Images (Parallel)') {
+        stage('Build and Push Docker Images') {
             steps {
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhublogin') {

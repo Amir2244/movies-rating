@@ -27,6 +27,55 @@ services:
     networks:
       - app-network
 
+  data-importer:
+    image: bde2020/hadoop-namenode
+    container_name: data-importer
+    depends_on:
+      - namenode
+      - datanode
+    entrypoint: /bin/bash
+    command: >
+      -c "
+        set -e;
+  
+        echo 'Waiting for HDFS to become available...';
+        until hdfs dfs -ls /; do
+          sleep 5;
+        done;
+      
+        # KEY FIX: Wait for the NameNode to exit Safe Mode
+        echo 'Waiting for NameNode to exit Safe Mode...';
+        until hdfs dfsadmin -Dfs.defaultFS=hdfs://namenode:8020 -safemode get | grep -q 'Safe mode is OFF'; do
+          sleep 5;
+        done;
+        echo 'NameNode has exited Safe Mode. Proceeding with data import.';
+  
+        echo 'HDFS is ready. Image is old, updating package sources to archive...';
+        sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list;
+        sed -i 's/security.debian.org/archive.debian.org/g' /etc/apt/sources.list;
+        sed -i '/stretch-updates/d' /etc/apt/sources.list;
+      
+        echo 'Installing dependencies from archive...';
+        apt-get update && apt-get install -y wget unzip;
+      
+        echo 'Dependencies installed successfully.';
+        echo 'Downloading MovieLens ml-latest 33M ratings dataset...';
+        wget https://files.grouplens.org/datasets/movielens/ml-latest.zip -O /tmp/ml-latest.zip;
+      
+        echo 'Extracting dataset...';
+        unzip /tmp/ml-latest.zip -d /tmp/;
+      
+        echo 'Creating /input directory in HDFS...';
+        hdfs dfs -Dfs.defaultFS=hdfs://namenode:8020 -mkdir -p /input;
+      
+        echo 'Copying data files to HDFS...';
+        hdfs dfs -Dfs.defaultFS=hdfs://namenode:8020 -put /tmp/ml-latest/*.csv /input/;
+      
+        echo 'Data import finished successfully! 🎉';
+      "
+    restart: "no"
+    networks:
+      - app-network
   spark-master:
     image: bde2020/spark-master
     container_name: spark-master
@@ -48,6 +97,7 @@ services:
       - namenode
       - datanode
       - redis
+      - data-importer
     command: >
       bash -c "
         echo 'Waiting for Spark Master to be ready...'
@@ -289,7 +339,7 @@ services:
       dockerfile: Dockerfile
     container_name: recommendations-api
     ports:
-    - "8082:8080"
+      - "8082:8080"
     environment:
       - SPRING_DATA_MONGODB_HOST=mongodb
       - SPRING_DATA_MONGODB_PORT=27017
@@ -299,11 +349,6 @@ services:
       - kafka
     networks:
       - app-network
-    # This service requires the WAR file to be built before docker-compose build
-    # Use one of the provided build scripts:
-    # On Windows: build-recommendations-api.bat
-    # On Linux/Unix: ./build-recommendations-api.sh (make it executable first with: chmod +x build-recommendations-api.sh)
-
 
 volumes:
   namenode_data:
