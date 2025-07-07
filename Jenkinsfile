@@ -118,19 +118,19 @@ pipeline {
         stage('Build Docker Images') {
             steps {
 
-                sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
+                sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | sudo docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
 
                 script {
                     try {
-                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:${VERSION_TAG} analytics-api"
+                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:${VERSION_TAG} analytics-api"
 
-                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:${VERSION_TAG} recommendations-api"
+                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:${VERSION_TAG} recommendations-api"
 
-                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:${VERSION_TAG} batch-processing-service"
+                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:${VERSION_TAG} batch-processing-service"
 
-                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:${VERSION_TAG} real-time-service"
+                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:${VERSION_TAG} real-time-service"
 
-                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:${VERSION_TAG} analytics-ui"
+                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:${VERSION_TAG} analytics-ui"
                     } catch (Exception e) {
                         echo "Error building Docker images: ${e.getMessage()}"
                         error "Failed to build Docker images"
@@ -143,20 +143,20 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:latest'
-                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:${VERSION_TAG}"
+                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:latest'
+                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:${VERSION_TAG}"
 
-                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:latest'
-                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:${VERSION_TAG}"
+                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:latest'
+                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:${VERSION_TAG}"
 
-                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:latest'
-                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:${VERSION_TAG}"
+                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:latest'
+                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:${VERSION_TAG}"
 
-                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:latest'
-                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:${VERSION_TAG}"
+                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:latest'
+                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:${VERSION_TAG}"
 
-                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:latest'
-                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:${VERSION_TAG}"
+                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:latest'
+                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:${VERSION_TAG}"
 
                         echo "Successfully pushed all Docker images to Docker Hub"
                     } catch (Exception e) {
@@ -181,11 +181,11 @@ pipeline {
                         sh 'mkdir -p docker-volumes/mongo_data'
 
                         // Check if Docker volumes exist, create them if they don't
-                        sh 'docker volume ls | grep "namenode_data" || docker volume create namenode_data'
-                        sh 'docker volume ls | grep "datanode_data" || docker volume create datanode_data'
-                        sh 'docker volume ls | grep "redis_data" || docker volume create redis_data'
-                        sh 'docker volume ls | grep "mongo_data" || docker volume create mongo_data'
-                        sh 'docker volume ls | grep "kafka_data" || docker volume create kafka_data'
+                        sh 'sudo docker volume ls | grep "namenode_data" || sudo docker volume create namenode_data'
+                        sh 'sudo docker volume ls | grep "datanode_data" || sudo docker volume create datanode_data'
+                        sh 'sudo docker volume ls | grep "redis_data" || sudo docker volume create redis_data'
+                        sh 'sudo docker volume ls | grep "mongo_data" || sudo docker volume create mongo_data'
+                        sh 'sudo docker volume ls | grep "kafka_data" || sudo docker volume create kafka_data'
 
                         echo 'Docker volumes prepared successfully'
                     } catch (Exception e) {
@@ -199,12 +199,12 @@ pipeline {
 
     post {
         always {
-            sh 'docker logout'
+            sh 'sudo docker logout'
             script {
                 try {
                     echo 'Cleaning up Docker resources...'
-                    sh 'docker image prune -f'
-                    sh 'docker container prune -f'
+                    sh 'sudo docker image prune -f'
+                    sh 'sudo docker container prune -f'
                     echo 'Docker cleanup completed'
                     echo 'Preserving Docker volumes for data persistence'
                 } catch (Exception e) {
