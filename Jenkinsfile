@@ -21,7 +21,7 @@ pipeline {
         stage('Build Shared Kernel') {
             steps {
                 dir('shared-kernel') {
-                    bat 'mvn clean install'
+                    sh 'mvn clean install'
                 }
             }
         }
@@ -31,7 +31,7 @@ pipeline {
                 stage('Analytics API') {
                     steps {
                         dir('analytics-api') {
-                            bat 'mvn clean package -DskipTests'
+                            sh 'mvn clean package -DskipTests'
                         }
                     }
                 }
@@ -39,7 +39,7 @@ pipeline {
                 stage('Recommendations API') {
                     steps {
                         dir('recommendations-api') {
-                            bat 'mvn clean package -DskipTests'
+                            sh 'mvn clean package -DskipTests'
                         }
                     }
                 }
@@ -47,7 +47,7 @@ pipeline {
                 stage('Batch Processing Service') {
                     steps {
                         dir('batch-processing-service') {
-                            bat 'mvn clean package -DskipTests'
+                            sh 'mvn clean package -DskipTests'
                         }
                     }
                 }
@@ -55,7 +55,7 @@ pipeline {
                 stage('Real-Time Service') {
                     steps {
                         dir('real-time-service') {
-                            bat 'mvn clean package -DskipTests'
+                            sh 'mvn clean package -DskipTests'
                         }
                     }
                 }
@@ -63,8 +63,8 @@ pipeline {
                 stage('Analytics UI') {
                     steps {
                         dir('analytics-ui') {
-                            bat 'npm ci'
-                            bat 'npm run build'
+                            sh 'npm ci'
+                            sh 'npm run build'
                         }
                     }
                 }
@@ -76,7 +76,7 @@ pipeline {
                 stage('Analytics API Tests') {
                     steps {
                         dir('analytics-api') {
-                            bat 'mvn test'
+                            sh 'mvn test'
                         }
                     }
                     post {
@@ -89,7 +89,7 @@ pipeline {
                 stage('Recommendations API Tests') {
                     steps {
                         dir('recommendations-api') {
-                            bat 'mvn test'
+                            sh 'mvn test'
                         }
                     }
                     post {
@@ -102,7 +102,7 @@ pipeline {
                 stage('Batch Processing Service Tests') {
                     steps {
                         dir('batch-processing-service') {
-                            bat 'mvn test'
+                            sh 'mvn test'
                         }
                     }
                     post {
@@ -118,19 +118,19 @@ pipeline {
         stage('Build Docker Images') {
             steps {
 
-                bat 'echo %DOCKERHUB_CREDENTIALS_PSW% | docker login -u %DOCKERHUB_CREDENTIALS_USR% --password-stdin'
+                sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
 
                 script {
                     try {
-                        bat "docker build -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-analytics-api:latest -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-analytics-api:${VERSION_TAG} analytics-api"
+                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:${VERSION_TAG} analytics-api"
 
-                        bat "docker build -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-recommendations-api:latest -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-recommendations-api:${VERSION_TAG} recommendations-api"
+                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:${VERSION_TAG} recommendations-api"
 
-                        bat "docker build -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-batch-processing:latest -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-batch-processing:${VERSION_TAG} batch-processing-service"
+                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:${VERSION_TAG} batch-processing-service"
 
-                        bat "docker build -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-real-time:latest -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-real-time:${VERSION_TAG} real-time-service"
+                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:${VERSION_TAG} real-time-service"
 
-                        bat "docker build -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-analytics-ui:latest -t %DOCKERHUB_CREDENTIALS_USR%/movies-rating-analytics-ui:${VERSION_TAG} analytics-ui"
+                        sh "docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:${VERSION_TAG} analytics-ui"
                     } catch (Exception e) {
                         echo "Error building Docker images: ${e.getMessage()}"
                         error "Failed to build Docker images"
@@ -143,20 +143,20 @@ pipeline {
             steps {
                 script {
                     try {
-                        bat 'docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-analytics-api:latest'
-                        bat "docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-analytics-api:${VERSION_TAG}"
+                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:latest'
+                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:${VERSION_TAG}"
 
-                        bat 'docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-recommendations-api:latest'
-                        bat "docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-recommendations-api:${VERSION_TAG}"
+                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:latest'
+                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:${VERSION_TAG}"
 
-                        bat 'docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-batch-processing:latest'
-                        bat "docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-batch-processing:${VERSION_TAG}"
+                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:latest'
+                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:${VERSION_TAG}"
 
-                        bat 'docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-real-time:latest'
-                        bat "docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-real-time:${VERSION_TAG}"
+                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:latest'
+                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:${VERSION_TAG}"
 
-                        bat 'docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-analytics-ui:latest'
-                        bat "docker push %DOCKERHUB_CREDENTIALS_USR%/movies-rating-analytics-ui:${VERSION_TAG}"
+                        sh 'docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:latest'
+                        sh "docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:${VERSION_TAG}"
 
                         echo "Successfully pushed all Docker images to Docker Hub"
                     } catch (Exception e) {
@@ -174,18 +174,18 @@ pipeline {
                         echo 'Ensuring Docker volumes exist for persistent data storage...'
 
                         // Create docker-volumes directory if it doesn't exist
-                        bat 'if not exist docker-volumes mkdir docker-volumes'
-                        bat 'if not exist docker-volumes\\namenode_data mkdir docker-volumes\\namenode_data'
-                        bat 'if not exist docker-volumes\\datanode_data mkdir docker-volumes\\datanode_data'
-                        bat 'if not exist docker-volumes\\redis_data mkdir docker-volumes\\redis_data'
-                        bat 'if not exist docker-volumes\\mongo_data mkdir docker-volumes\\mongo_data'
+                        sh 'mkdir -p docker-volumes'
+                        sh 'mkdir -p docker-volumes/namenode_data'
+                        sh 'mkdir -p docker-volumes/datanode_data'
+                        sh 'mkdir -p docker-volumes/redis_data'
+                        sh 'mkdir -p docker-volumes/mongo_data'
 
                         // Check if Docker volumes exist, create them if they don't
-                        bat 'docker volume ls | findstr "namenode_data" || docker volume create namenode_data'
-                        bat 'docker volume ls | findstr "datanode_data" || docker volume create datanode_data'
-                        bat 'docker volume ls | findstr "redis_data" || docker volume create redis_data'
-                        bat 'docker volume ls | findstr "mongo_data" || docker volume create mongo_data'
-                        bat 'docker volume ls | findstr "kafka_data" || docker volume create kafka_data'
+                        sh 'docker volume ls | grep "namenode_data" || docker volume create namenode_data'
+                        sh 'docker volume ls | grep "datanode_data" || docker volume create datanode_data'
+                        sh 'docker volume ls | grep "redis_data" || docker volume create redis_data'
+                        sh 'docker volume ls | grep "mongo_data" || docker volume create mongo_data'
+                        sh 'docker volume ls | grep "kafka_data" || docker volume create kafka_data'
 
                         echo 'Docker volumes prepared successfully'
                     } catch (Exception e) {
@@ -199,12 +199,12 @@ pipeline {
 
     post {
         always {
-            bat 'docker logout'
+            sh 'docker logout'
             script {
                 try {
                     echo 'Cleaning up Docker resources...'
-                    bat 'docker image prune -f'
-                    bat 'docker container prune -f'
+                    sh 'docker image prune -f'
+                    sh 'docker container prune -f'
                     echo 'Docker cleanup completed'
                     echo 'Preserving Docker volumes for data persistence'
                 } catch (Exception e) {
