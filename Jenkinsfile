@@ -118,7 +118,7 @@ pipeline {
         stage('Build Docker Images') {
             steps {
 
-                sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | sudo docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
+                sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | sudo -S docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
 
                 script {
                     try {
