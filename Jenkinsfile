@@ -1,13 +1,13 @@
 pipeline {
     agent any
 
-
     tools {
         maven 'Maven-3.9'
     }
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhublogin')
+        DOCKER_HUB_USER = DOCKERHUB_CREDENTIALS_USR
         VERSION_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
     }
 
@@ -26,142 +26,98 @@ pipeline {
             }
         }
 
-        stage('Build Services') {
-            parallel {
-                stage('Analytics API') {
-                    steps {
-                        dir('analytics-api') {
-                            sh 'mvn clean package -DskipTests'
+        stage('Build Services (Parallel)') {
+            steps {
+                parallel(
+                    'Analytics API': {
+                    dir('analytics-api') {
+                        sh 'mvn clean package -DskipTests'
                         }
-                    }
-                }
-
-                stage('Recommendations API') {
-                    steps {
-                        dir('recommendations-api') {
-                            sh 'mvn clean package -DskipTests'
+                    },
+                    'Recommendations API': {
+                    dir('recommendations-api') {
+                        sh 'mvn clean package -DskipTests'
                         }
-                    }
-                }
-
-                stage('Batch Processing Service') {
-                    steps {
-                        dir('batch-processing-service') {
-                            sh 'mvn clean package -DskipTests'
+                    },
+                    'Batch Processing Service': {
+                    dir('batch-processing-service') {
+                        sh 'mvn clean package -DskipTests'
                         }
-                    }
-                }
-
-                stage('Real-Time Service') {
-                    steps {
-                        dir('real-time-service') {
-                            sh 'mvn clean package -DskipTests'
+                    },
+                    'Real-Time Service': {
+                    dir('real-time-service') {
+                        sh 'mvn clean package -DskipTests'
                         }
-                    }
-                }
-
-                stage('Analytics UI') {
-                    steps {
-                        dir('analytics-ui') {
-                            sh 'npm ci'
+                    },
+                    'Analytics UI': {
+                    dir('analytics-ui') {
+                        sh 'npm ci'
                             sh 'npm run build'
                         }
                     }
-                }
+                )
             }
         }
 
-        stage('Run Tests') {
-            parallel {
-                stage('Analytics API Tests') {
-                    steps {
-                        dir('analytics-api') {
-                            sh 'mvn test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit '**/target/surefire-reports/*.xml'
-                        }
-                    }
-                }
-
-                stage('Recommendations API Tests') {
-                    steps {
-                        dir('recommendations-api') {
-                            sh 'mvn test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit '**/target/surefire-reports/*.xml'
-                        }
-                    }
-                }
-
-                stage('Batch Processing Service Tests') {
-                    steps {
-                        dir('batch-processing-service') {
-                            sh 'mvn test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit '**/target/surefire-reports/*.xml'
-                        }
-                    }
-                }
-
-            }
-        }
-
-        stage('Build Docker Images') {
+        stage('Run Tests (Parallel)') {
             steps {
-
-                sh 'sudo docker login -u ${DOCKERHUB_CREDENTIALS_USR} -p ${DOCKERHUB_CREDENTIALS_PSW}'
-
-                script {
-                    try {
-                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:${VERSION_TAG} analytics-api"
-
-                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:${VERSION_TAG} recommendations-api"
-
-                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:${VERSION_TAG} batch-processing-service"
-
-                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:${VERSION_TAG} real-time-service"
-
-                        sh "sudo docker build -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:latest -t ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:${VERSION_TAG} analytics-ui"
-                    } catch (Exception e) {
-                        echo "Error building Docker images: ${e.getMessage()}"
-                        error "Failed to build Docker images"
+                parallel(
+                    'Analytics API Tests': {
+                    dir('analytics-api') {
+                        sh 'mvn test'
+                        }
+                    },
+                    'Recommendations API Tests': {
+                    dir('recommendations-api') {
+                        sh 'mvn test'
+                        }
+                    },
+                    'Batch Processing Service Tests': {
+                    dir('batch-processing-service') {
+                        sh 'mvn test'
+                        }
                     }
+                )
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
                 }
             }
         }
 
-        stage('Push Docker Images') {
+        stage('Build and Push Docker Images (Parallel)') {
             steps {
                 script {
-                    try {
-                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:latest'
-                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-api:${VERSION_TAG}"
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhublogin') {
+                        def services = [
+                            'analytics-api',
+                            'recommendations-api',
+                            'batch-processing-service',
+                            'real-time-service',
+                            'analytics-ui'
+                        ]
+                        def builds = services.collectEntries { serviceName ->
+                            ["Build & Push ${serviceName}": {
+                            try {
+                                def imageName = "${DOCKER_HUB_USER}/movies-rating-${serviceName}"
+                                    def dockerImage = docker.build("${imageName}:${VERSION_TAG}", "./${serviceName}")
 
-                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:latest'
-                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-recommendations-api:${VERSION_TAG}"
+                                    echo "Pushing image ${imageName}:${VERSION_TAG}"
+                                    dockerImage.push()
 
-                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:latest'
-                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-batch-processing:${VERSION_TAG}"
+                                    echo "Tagging and pushing image ${imageName}:latest"
+                                    dockerImage.push('latest')
 
-                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:latest'
-                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-real-time:${VERSION_TAG}"
+                                    echo "✅ Successfully built and pushed ${imageName}"
 
-                        sh 'sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:latest'
-                        sh "sudo docker push ${DOCKERHUB_CREDENTIALS_USR}/movies-rating-analytics-ui:${VERSION_TAG}"
-
-                        echo "Successfully pushed all Docker images to Docker Hub"
-                    } catch (Exception e) {
-                        echo "Error pushing Docker images: ${e.getMessage()}"
-                        error "Failed to push Docker images"
+                                } catch (Exception e) {
+                                echo "❌ Error processing Docker image for ${serviceName}: ${e.getMessage()}"
+                                    error "Failed to build or push Docker image for ${serviceName}"
+                                }
+                            }]
+                        }
+                        parallel builds
                     }
                 }
             }
@@ -170,28 +126,13 @@ pipeline {
         stage('Prepare Docker Volumes') {
             steps {
                 script {
-                    try {
-                        echo 'Ensuring Docker volumes exist for persistent data storage...'
+                    echo 'Ensuring Docker volumes exist for persistent data storage...'
+                    def volumes = ['namenode_data', 'datanode_data', 'redis_data', 'mongo_data', 'kafka_data']
 
-                        // Create docker-volumes directory if it doesn't exist
-                        sh 'mkdir -p docker-volumes'
-                        sh 'mkdir -p docker-volumes/namenode_data'
-                        sh 'mkdir -p docker-volumes/datanode_data'
-                        sh 'mkdir -p docker-volumes/redis_data'
-                        sh 'mkdir -p docker-volumes/mongo_data'
-
-                        // Check if Docker volumes exist, create them if they don't
-                        sh 'sudo docker volume ls | grep "namenode_data" || sudo docker volume create namenode_data'
-                        sh 'sudo docker volume ls | grep "datanode_data" || sudo docker volume create datanode_data'
-                        sh 'sudo docker volume ls | grep "redis_data" || sudo docker volume create redis_data'
-                        sh 'sudo docker volume ls | grep "mongo_data" || sudo docker volume create mongo_data'
-                        sh 'sudo docker volume ls | grep "kafka_data" || sudo docker volume create kafka_data'
-
-                        echo 'Docker volumes prepared successfully'
-                    } catch (Exception e) {
-                        echo "Warning: Docker volume preparation failed: ${e.getMessage()}"
-                        echo "This may cause issues with data persistence. Check volume configuration."
+                    volumes.each { volumeName ->
+                        sh "docker volume ls -q -f name=${volumeName} | grep -q . || docker volume create ${volumeName}"
                     }
+                    echo 'Docker volumes prepared successfully.'
                 }
             }
         }
@@ -199,27 +140,19 @@ pipeline {
 
     post {
         always {
-            sh 'sudo docker logout'
             script {
-                try {
-                    echo 'Cleaning up Docker resources...'
-                    sh 'sudo docker image prune -f'
-                    sh 'sudo docker container prune -f'
-                    echo 'Docker cleanup completed'
-                    echo 'Preserving Docker volumes for data persistence'
-                } catch (Exception e) {
-                    echo "Warning: Docker cleanup failed: ${e.getMessage()}"
-                }
+                echo '🧹 Cleaning up Docker resources...'
+                sh 'docker image prune -f'
+                sh 'docker container prune -f'
+                echo 'Docker cleanup completed. Volumes are preserved.'
             }
         }
         success {
-            echo 'Pipeline completed successfully!'
-            echo "Docker images tagged with 'latest' and '${VERSION_TAG}' have been pushed to Docker Hub"
-            echo "Note: Docker volumes for services like namenode, datanode, redis, mongodb, and kafka are preserved for data persistence"
+            echo '🚀 Pipeline completed successfully!'
+            echo "Docker images tagged with 'latest' and '${VERSION_TAG}' have been pushed to Docker Hub."
         }
         failure {
-            echo 'Pipeline failed!'
-            echo 'Check the logs above for more details on the failure'
+            echo '🛑 Pipeline failed! Check the logs for details.'
         }
     }
 }
