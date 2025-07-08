@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: C:\Users\HP\Documents\FifthYear\Project\movies-rating\kubernetes\kompose.exe -f C:\Users\HP\Documents\FifthYear\Project\movies-rating\docker-compose.yml convert
+    kompose.version: 1.34.0 (cbf2835db)
+  labels:
+    io.kompose.service: batch-processing-service
+  name: batch-processing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: batch-processing-service
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: C:\Users\HP\Documents\FifthYear\Project\movies-rating\kubernetes\kompose.exe -f C:\Users\HP\Documents\FifthYear\Project\movies-rating\docker-compose.yml convert
+        kompose.version: 1.34.0 (cbf2835db)
+      labels:
+        io.kompose.service: batch-processing-service
+    spec:
+      containers:
+        - args:
+            - bash
+            - -c
+            - |2
+                echo 'Waiting for Spark Master to be ready...'
+                while ! nc -z spark-master 7077; do
+                  sleep 1;
+                done;
+
+                echo 'Spark Master is ready. Attempting to submit Spark job...'
+
+                MAX_RETRIES=5
+                RETRY_COUNT=0
+                until /spark/bin/spark-submit --master spark://spark-master:7077 --class org.hiast.batch.launcher.AppLauncher /opt/spark-apps/batch-processing-service.jar analytics; do
+                  RETRY_COUNT=$()((RETRY_COUNT+1))
+                  if [  -ge  ]; then
+                    echo 'Failed to submit Spark job after  attempts. Exiting.'
+                    exit 1
+                  fi
+                  echo 'Job submission failed, retrying in 5 seconds... (Attempt /)'
+                  sleep 5
+                done
+
+                echo 'Spark job submitted successfully.'
+          image: batch-processing-service
+          name: batch-processing-service
+      restartPolicy: Always
