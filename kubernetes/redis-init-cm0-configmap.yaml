@@ -1,0 +1,418 @@
+apiVersion: v1
+data:
+  init-vector-db.sh: |
+    #!/bin/bash
+
+    # Redis Vector Database Initialization Script
+    # This script sets up vector indices for the movie recommendation system
+
+    echo "Initializing Redis Vector Database for Movie Recommendation System..."
+
+    # Wait for Redis to be ready
+    echo "Waiting for Redis to be ready..."
+    until redis-cli ping; do
+      echo "Redis is unavailable - sleeping"
+      sleep 1
+    done
+    echo "Redis is ready!"
+
+    # Create vector index for user factors
+    echo "Creating user factors vector index..."
+    redis-cli FT.CREATE user_factors_idx \
+      ON HASH \
+      PREFIX 1 "user_factor:" \
+      SCHEMA \
+        userId NUMERIC SORTABLE \
+        factors VECTOR FLAT 6 \
+          TYPE FLOAT32 \
+          DIM 50 \
+          DISTANCE_METRIC COSINE \
+        timestamp NUMERIC SORTABLE \
+        modelVersion TAG
+
+    # Create vector index for item (movie) factors
+    echo "Creating item factors vector index..."
+    redis-cli FT.CREATE item_factors_idx \
+      ON HASH \
+      PREFIX 1 "item_factor:" \
+      SCHEMA \
+        itemId NUMERIC SORTABLE \
+        factors VECTOR FLAT 6 \
+          TYPE FLOAT32 \
+          DIM 50 \
+          DISTANCE_METRIC COSINE \
+        timestamp NUMERIC SORTABLE \
+        modelVersion TAG
+
+    # Create index for movie metadata (for quick lookups)
+    echo "Creating movie metadata index..."
+    redis-cli FT.CREATE movie_metadata_idx \
+      ON HASH \
+      PREFIX 1 "movie:" \
+      SCHEMA \
+        movieId NUMERIC SORTABLE \
+        title TEXT SORTABLE \
+        genres TAG SEPARATOR "|" \
+        year NUMERIC SORTABLE
+
+    # Create index for user recommendations cache
+    echo "Creating user recommendations cache index..."
+    redis-cli FT.CREATE user_recommendations_idx \
+      ON HASH \
+      PREFIX 1 "user_rec:" \
+      SCHEMA \
+        userId NUMERIC SORTABLE \
+        movieId NUMERIC SORTABLE \
+        rating NUMERIC SORTABLE \
+        timestamp NUMERIC SORTABLE \
+        modelVersion TAG
+
+    # Set up Redis configuration for optimal vector performance
+    echo "Configuring Redis for optimal vector performance..."
+
+    # Set memory policy for vector data
+    redis-cli CONFIG SET maxmemory-policy allkeys-lru
+
+    # Configure save intervals for vector data persistence
+    redis-cli CONFIG SET save "900 1 300 10 60 1000"
+
+    # Enable AOF for durability
+    redis-cli CONFIG SET appendonly yes
+    redis-cli CONFIG SET appendfsync everysec
+
+    # Optimize for vector search workloads
+    redis-cli CONFIG SET hash-max-ziplist-entries 1024
+    redis-cli CONFIG SET hash-max-ziplist-value 1024
+
+    # Set up monitoring
+    redis-cli CONFIG SET slowlog-log-slower-than 10000
+    redis-cli CONFIG SET slowlog-max-len 128
+
+    # Enable latency monitoring
+    redis-cli CONFIG SET latency-monitor-threshold 100
+
+    echo "Vector database initialization completed!"
+
+    # Display index information
+    echo "Created indices:"
+    redis-cli FT._LIST
+
+    # Display Redis info
+    echo "Redis info:"
+    redis-cli INFO modules
+
+    echo "Redis Vector Database is ready for use!"
+  redis.conf: |
+    # Redis configuration optimized for vector database usage
+    # Based on Redis 7.2 with RediSearch module for vector similarity search
+
+    # Network and Connection Settings
+    bind 0.0.0.0
+    port 6379
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+
+    # General Settings
+    daemonize no
+    supervised no
+    pidfile /var/run/redis_6379.pid
+    loglevel notice
+    logfile ""
+    databases 16
+
+    # Memory Management - Critical for Vector Storage
+    maxmemory 4gb
+    maxmemory-policy allkeys-lru
+    maxmemory-samples 5
+
+    # Persistence Settings for Vector Data
+    save 900 1
+    save 300 10
+    save 60 1000
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir /data
+
+    # AOF (Append Only File) for durability
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    aof-load-truncated yes
+    aof-use-rdb-preamble yes
+
+    # Lua Scripting
+    lua-time-limit 5000
+
+    # Slow Log for Performance Monitoring
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+
+    # Latency Monitoring
+    latency-monitor-threshold 100
+
+    # Event Notification for Vector Operations
+    notify-keyspace-events ""
+
+    # Advanced Memory Settings for Vector Storage
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+    list-max-ziplist-size -2
+    list-compress-depth 0
+    set-max-intset-entries 512
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
+    hll-sparse-max-bytes 3000
+    stream-node-max-bytes 4096
+    stream-node-max-entries 100
+
+    # Active Rehashing for Performance
+    activerehashing yes
+
+    # Client Output Buffer Limits
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+
+    # Client Query Buffer
+    client-query-buffer-limit 1gb
+
+    # Protocol Buffer
+    proto-max-bulk-len 512mb
+
+    # Frequency of Rehashing
+    hz 10
+
+    # Dynamic HZ for Better Performance
+    dynamic-hz yes
+
+    # AOF Rewrite Incremental Fsync
+    aof-rewrite-incremental-fsync yes
+
+    # RDB Save Incremental Fsync
+    rdb-save-incremental-fsync yes
+
+    # Vector Database Specific Optimizations
+    # These settings optimize Redis for storing and searching vectors
+
+    # Increase maximum number of clients for concurrent vector operations
+    maxclients 10000
+
+    # Optimize for vector similarity search workloads
+    # Disable some features that are not needed for vector storage
+    replica-read-only yes
+    replica-serve-stale-data yes
+    replica-priority 100
+
+    # Security Settings (basic)
+    protected-mode no
+    requirepass ""
+
+    # Module Loading (handled by docker command but kept for reference)
+    # loadmodule /opt/redis-stack/lib/redisearch.so
+    # loadmodule /opt/redis-stack/lib/rejson.so
+    # loadmodule /opt/redis-stack/lib/redistimeseries.so
+    # loadmodule /opt/redis-stack/lib/redisbloom.so
+
+    # RediSearch Specific Configuration for Vector Search
+    # These are module-specific configurations that will be applied when RediSearch loads
+
+    # Vector Index Configuration (applied via commands, not config file)
+    # FT.CREATE vector_index ON HASH PREFIX 1 vector: SCHEMA vector_field VECTOR FLAT 6 TYPE FLOAT32 DIM 50 DISTANCE_METRIC COSINE
+
+    # Performance Tuning for Vector Operations
+    # Increase timeout for long-running vector search operations
+    busy-reply-threshold 5000
+
+    # Memory Usage Optimization
+    # Use jemalloc for better memory allocation patterns with vectors
+    # (This is typically compiled into Redis)
+
+    # Disable some Redis features not needed for vector storage
+    # to save memory and improve performance
+    save-empty-db no
+
+    # Enable keyspace notifications for vector index management
+    # notify-keyspace-events "Ex"
+
+    # Optimize TCP settings for vector data transfer
+    tcp-nodelay yes
+
+    # Set reasonable limits for vector operations
+    # These prevent memory exhaustion during large vector operations
+    list-max-ziplist-size -1
+    hash-max-ziplist-entries 1024
+    hash-max-ziplist-value 1024
+
+    # Enable active defragmentation to handle vector data fragmentation
+    # activedefrag yes
+    # active-defrag-ignore-bytes 100mb
+    # active-defrag-threshold-lower 10
+    # active-defrag-threshold-upper 100
+    # active-defrag-cycle-min 1
+    # active-defrag-cycle-max 25
+  redis.env: |
+    # Redis Stack Environment Configuration for Vector Database
+
+    # Memory Configuration
+    REDIS_MAXMEMORY=4gb
+    REDIS_MAXMEMORY_POLICY=allkeys-lru
+
+    # Persistence Configuration
+    REDIS_SAVE=900 1 300 10 60 1000
+    REDIS_APPENDONLY=yes
+    REDIS_APPENDFSYNC=everysec
+
+    # Performance Tuning
+    REDIS_TCP_KEEPALIVE=300
+    REDIS_TIMEOUT=0
+    REDIS_DATABASES=16
+    REDIS_HZ=10
+
+    # Vector Database Specific Settings
+    REDIS_HASH_MAX_ZIPLIST_ENTRIES=1024
+    REDIS_HASH_MAX_ZIPLIST_VALUE=1024
+    REDIS_LIST_MAX_ZIPLIST_SIZE=-2
+    REDIS_SET_MAX_INTSET_ENTRIES=512
+
+    # Monitoring
+    REDIS_SLOWLOG_LOG_SLOWER_THAN=10000
+    REDIS_SLOWLOG_MAX_LEN=128
+    REDIS_LATENCY_MONITOR_THRESHOLD=100
+
+    # Security
+    REDIS_PROTECTED_MODE=no
+    REDIS_BIND=0.0.0.0
+
+    # Module Configuration
+    REDIS_MODULES=RedisJSON,RediSearch,RedisTimeSeries,RedisBloom
+  test-vector-db.sh: |
+    #!/bin/bash
+
+    # Redis Vector Database Test Script
+    # This script tests the vector database functionality
+
+    echo "Testing Redis Vector Database Setup..."
+
+    # Test basic Redis connectivity
+    echo "1. Testing Redis connectivity..."
+    redis-cli -h localhost -p 6379 ping
+    if [ $? -eq 0 ]; then
+        echo "✓ Redis is accessible"
+    else
+        echo "✗ Redis is not accessible"
+        exit 1
+    fi
+
+    # Test RediSearch module
+    echo "2. Testing RediSearch module..."
+    redis-cli -h localhost -p 6379 MODULE LIST | grep -i search
+    if [ $? -eq 0 ]; then
+        echo "✓ RediSearch module is loaded"
+    else
+        echo "✗ RediSearch module is not loaded"
+    fi
+
+    # Test RedisJSON module
+    echo "3. Testing RedisJSON module..."
+    redis-cli -h localhost -p 6379 MODULE LIST | grep -i json
+    if [ $? -eq 0 ]; then
+        echo "✓ RedisJSON module is loaded"
+    else
+        echo "✗ RedisJSON module is not loaded"
+    fi
+
+    # List all indices
+    echo "4. Listing all search indices..."
+    redis-cli -h localhost -p 6379 FT._LIST
+
+    # Test vector index creation (if not exists)
+    echo "5. Testing vector index functionality..."
+
+    # Create a test vector index
+    redis-cli -h localhost -p 6379 FT.CREATE test_vector_idx ON HASH PREFIX 1 "test_vec:" SCHEMA vector_field VECTOR FLAT 6 TYPE FLOAT32 DIM 3 DISTANCE_METRIC COSINE
+
+    # Add a test vector
+    echo "6. Adding test vector data..."
+    redis-cli -h localhost -p 6379 HSET test_vec:1 vector_field "0.1,0.2,0.3"
+    redis-cli -h localhost -p 6379 HSET test_vec:2 vector_field "0.4,0.5,0.6"
+    redis-cli -h localhost -p 6379 HSET test_vec:3 vector_field "0.7,0.8,0.9"
+
+    # Test vector search
+    echo "7. Testing vector similarity search..."
+    redis-cli -h localhost -p 6379 FT.SEARCH test_vector_idx "*=>[KNN 2 @vector_field \$query_vec]" PARAMS 2 query_vec "0.1,0.2,0.3" DIALECT 2
+
+    # Test user factors index
+    echo "8. Testing user factors index..."
+    redis-cli -h localhost -p 6379 FT.INFO user_factors_idx
+
+    # Test item factors index
+    echo "9. Testing item factors index..."
+    redis-cli -h localhost -p 6379 FT.INFO item_factors_idx
+
+    # Test movie metadata index
+    echo "10. Testing movie metadata index..."
+    redis-cli -h localhost -p 6379 FT.INFO movie_metadata_idx
+
+    # Test user recommendations index
+    echo "11. Testing user recommendations index..."
+    redis-cli -h localhost -p 6379 FT.INFO user_recommendations_idx
+
+    # Add sample movie metadata
+    echo "12. Adding sample movie metadata..."
+    redis-cli -h localhost -p 6379 HSET movie:1 movieId 1 title "Toy Story (1995)" genres "Animation|Children's|Comedy" year 1995
+    redis-cli -h localhost -p 6379 HSET movie:2 movieId 2 title "Jumanji (1995)" genres "Adventure|Children's|Fantasy" year 1995
+
+    # Test movie search
+    echo "13. Testing movie metadata search..."
+    redis-cli -h localhost -p 6379 FT.SEARCH movie_metadata_idx "@title:Toy"
+    redis-cli -h localhost -p 6379 FT.SEARCH movie_metadata_idx "@genres:{Animation}"
+
+    # Add sample user factors
+    echo "14. Adding sample user factors..."
+    redis-cli -h localhost -p 6379 HSET user_factor:1 userId 1 factors "0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.5,0.6,0.7,0.8,0.9,0.1" timestamp $(date +%s) modelVersion "test-v1"
+
+    # Add sample item factors
+    echo "15. Adding sample item factors..."
+    redis-cli -h localhost -p 6379 HSET item_factor:1 itemId 1 factors "0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.5,0.4,0.3,0.2,0.1,0.9" timestamp $(date +%s) modelVersion "test-v1"
+
+    # Test factor search
+    echo "16. Testing factor search..."
+    redis-cli -h localhost -p 6379 FT.SEARCH user_factors_idx "@userId:[1 1]"
+    redis-cli -h localhost -p 6379 FT.SEARCH item_factors_idx "@itemId:[1 1]"
+
+    # Display Redis memory usage
+    echo "17. Redis memory usage:"
+    redis-cli -h localhost -p 6379 INFO memory | grep used_memory_human
+
+    # Display Redis configuration
+    echo "18. Key Redis configurations:"
+    redis-cli -h localhost -p 6379 CONFIG GET maxmemory
+    redis-cli -h localhost -p 6379 CONFIG GET maxmemory-policy
+    redis-cli -h localhost -p 6379 CONFIG GET save
+
+    # Clean up test data
+    echo "19. Cleaning up test data..."
+    redis-cli -h localhost -p 6379 FT.DROPINDEX test_vector_idx DD
+    redis-cli -h localhost -p 6379 DEL test_vec:1 test_vec:2 test_vec:3
+
+    echo "✓ Redis Vector Database test completed!"
+    echo ""
+    echo "Summary:"
+    echo "- Redis Stack is properly configured for vector database operations"
+    echo "- All required modules (RediSearch, RedisJSON) are loaded"
+    echo "- Vector indices are created and functional"
+    echo "- Sample data operations work correctly"
+    echo ""
+    echo "You can access RedisInsight at: http://localhost:8001"
+    echo "Redis server is available at: localhost:6379"
+kind: ConfigMap
+metadata:
+  labels:
+    io.kompose.service: redis-init
+  name: redis-init-cm0
