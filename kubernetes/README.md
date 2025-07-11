@@ -2,30 +2,6 @@
 
 This directory contains Kubernetes configuration files for deploying the Movies Rating project on a Kubernetes cluster. The configurations are organized by service type.
 
-## Directory Structure
-
-```
-kubernetes/
-├── application/
-│   └── real-time-service-deployment.yaml
-├── flink/
-│   ├── flink-jobmanager-deployment.yaml
-│   └── flink-taskmanager-deployment.yaml
-├── hadoop/
-│   ├── hadoop-datanode-deployment.yaml
-│   └── hadoop-namenode-deployment.yaml
-├── kafka/
-│   └── kafka-statefulset.yaml
-├── mongodb/
-│   └── mongodb-statefulset.yaml
-├── redis/
-│   ├── redis-deployment.yaml
-│   └── redis-init-job.yaml
-└── spark/
-    ├── spark-master-deployment.yaml
-    └── spark-worker-deployment.yaml
-```
-
 ## Services Overview
 
 ### Spark

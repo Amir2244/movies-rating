@@ -4,9 +4,10 @@ metadata:
   labels:
     io.kompose.service: kafka-data
   name: kafka-data
+  namespace: movies-rating
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 100Mi
+      storage: 1Gi
