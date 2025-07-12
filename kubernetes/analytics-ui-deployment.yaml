@@ -25,6 +25,10 @@ spec:
         - env:
             - name: ANALYTICS_API_URL
               value: http://analytics-api:8083
+            - name: RECOMMENDATIONS_API_URL
+              value: http://recommendations-api:8082
+            - name: ALLOWED_ORIGINS
+              value: ""
           image: analytics-ui
           name: analytics-ui
           ports:

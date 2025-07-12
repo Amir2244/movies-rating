@@ -12,42 +12,20 @@ import { AnalyticsDocument } from '@/lib/types';
 import { extractValue } from '@/lib/formatters';
 import axios from 'axios';
 
-// Use the proxied URL instead of direct backend URL
-const API_ENDPOINT = 'http://localhost:8083/analytics-api/analytics';
-
-// // Create an axios instance with default config
-// const api = axios.create({
-//     baseURL: API_ENDPOINT,
-//     timeout: 10000,
-//     headers: {
-//         'Content-Type': 'application/json',
-//         'Accept': 'application/json'
-//     },
-//     withCredentials: true // Enable sending credentials
-// });
-
 export const useAnalyticsData = () => {
-    // State for the raw data from the API
     const [data, setData] = useState<AnalyticsDocument[]>([]);
-    // State to track loading status
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    // State to hold any potential errors during fetch
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch data from the API endpoint when the component mounts
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Reset states for a new fetch
                 setIsLoading(true);
                 setError(null);
-
-                const response = await axios.get("http://localhost:8083/analytics-api/analytics");
-                console.log('API Response:', response.data); // Debug log
-
-                // Extract the analytics array from the response
+                const response = await axios.get("/analytics-api/analytics");
+                console.log('API Response:', response.data);
                 const analyticsData = response.data.analytics || [];
-                console.log('Analytics Data:', analyticsData); // Debug log
+                console.log('Analytics Data:', analyticsData);
 
                 setData(analyticsData);
             } catch (err) {
@@ -63,9 +41,7 @@ export const useAnalyticsData = () => {
         };
 
         fetchData();
-    }, []); // Empty dependency array means this runs once on mount
-
-    // Memoized function to get a specific data document by its type
+    }, []);
     const getDataByType = (type: string): AnalyticsDocument | null => {
         if (!Array.isArray(data)) {
             console.error('Data is not an array:', data);
@@ -74,9 +50,6 @@ export const useAnalyticsData = () => {
         return data.find(item => item && item.type === type) || null;
     };
 
-    // --- Start of Memoized Data Transformations ---
-    // We use useMemo for every derived data piece. This is a critical performance optimization.
-    // The complex data shaping logic will only re-run if the raw `data` from the API changes.
 
     const processingData = useMemo(() => getDataByType('PROCESSING_PERFORMANCE'), [data]);
     const freshnessData = useMemo(() => getDataByType('DATA_FRESHNESS'), [data]);
@@ -215,12 +188,9 @@ export const useAnalyticsData = () => {
             })
             .sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day));
     }, [temporalData]);
-
-    // Return everything needed by the UI components
     return {
         isLoading,
         error,
-        // Raw data blocks
         processingData,
         freshnessData,
         ratingDistData,
@@ -230,7 +200,6 @@ export const useAnalyticsData = () => {
         moviePopularityData,
         genreData,
         contentPerformanceData,
-        // Processed chart-ready data
         ratingChartData,
         engagementChartData,
         segmentationChartData,

@@ -6,18 +6,21 @@ const nextConfig = {
                 source: '/analytics-api/:path*',
                 destination: `${process.env.ANALYTICS_API_URL || 'http://localhost:8083'}/analytics-api/:path*`,
             },
+            {
+                source: '/recommendations-api/:path*',
+                destination: `${process.env.RECOMMENDATIONS_API_URL || 'http://localhost:8082'}/recommendations-api/:path*`,
+            },
         ];
     },
-    allowedDevOrigins: ['10.2.0.2'],
     experimental: {
-        serverActions: true,
+        serverActions: {
+            allowedOrigins: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [],
+        },
     },
     eslint: {
-        // Warning: This allows production builds to successfully complete even if
-        // your project has ESLint errors.
         ignoreDuringBuilds: true,
     },
     output: 'standalone',
 }
 
-module.exports = nextConfig; 
+module.exports = nextConfig;
