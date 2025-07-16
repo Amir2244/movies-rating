@@ -46,6 +46,6 @@ spec:
                 done
 
                 echo 'Flink job submitted successfully.'
-          image: real-time-service
+          image: amir2244/movies-rating-real-time-service:latest
           name: real-time-service
       restartPolicy: Always

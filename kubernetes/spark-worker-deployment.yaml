@@ -9,7 +9,7 @@ metadata:
   name: spark-worker
   namespace: movies-rating
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       io.kompose.service: spark-worker

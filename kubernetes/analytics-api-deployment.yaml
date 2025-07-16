@@ -29,7 +29,7 @@ spec:
               value: mongodb
             - name: SPRING_DATA_MONGODB_PORT
               value: "27017"
-          image: analytics-api
+          image: amir2244/movies-rating-analytics-api:latest
           name: analytics-api
           ports:
             - containerPort: 8083

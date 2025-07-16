@@ -29,7 +29,7 @@ spec:
               value: http://recommendations-api:8082
             - name: ALLOWED_ORIGINS
               value: ""
-          image: analytics-ui
+          image: amir2244/movies-rating-analytics-ui:latest
           name: analytics-ui
           ports:
             - containerPort: 3000

@@ -46,6 +46,6 @@ spec:
                 done
 
                 echo 'Spark job submitted successfully.'
-          image: batch-processing-service
+          image: amir2244/movies-rating-batch-processing-service:latest
           name: batch-processing-service
       restartPolicy: Always

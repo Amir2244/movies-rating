@@ -50,8 +50,8 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
     private static final int SOCKET_TIMEOUT_MS = 120000;
     
     // Rate limiting configuration
-    private static final int MAX_OPERATIONS_PER_SECOND = 5000; // Adjust based on MongoDB capacity
-    private static final int MAX_CONCURRENT_WRITES = 10; // Limit concurrent bulk operations
+    private static final int MAX_OPERATIONS_PER_SECOND = 5000;
+    private static final int MAX_CONCURRENT_WRITES = 10;
     
     // Retry configuration
     private static final int MAX_RETRY_ATTEMPTS = 3;
@@ -63,7 +63,7 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
     private static final long CIRCUIT_BREAKER_TIMEOUT_MS = 80000;
 
     private final MongoConfig mongoConfig;
-    private  MongoClient mongoClient; // Marked transient as MongoClient is not serializable
+    private  MongoClient mongoClient;
     private  Semaphore writeSemaphore;
     private  RateLimiter rateLimiter;
     private  ExecutorService executorService;
