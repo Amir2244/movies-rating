@@ -7,6 +7,7 @@ metadata:
   labels:
     io.kompose.service: spark-worker
   name: spark-worker
+  namespace: movies-rating
 spec:
   type: NodePort
   ports:

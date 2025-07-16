@@ -5,14 +5,13 @@ metadata:
     kompose.cmd: C:\Users\HP\Desktop\deploy\kompose.exe -f .\docker-compose.yml convert
     kompose.version: 1.34.0 (cbf2835db)
   labels:
-    io.kompose.service: spark-worker-2
-  name: spark-worker-2
+    io.kompose.service: real-time-service
+  name: real-time-service
   namespace: movies-rating
 spec:
-  type: NodePort
   ports:
-    - name: "8087"
-      port: 8087
-      targetPort: 8087
+    - name: "8089"
+      port: 8089
+      targetPort: 8089
   selector:
-    io.kompose.service: spark-worker-2
+    io.kompose.service: real-time-service
