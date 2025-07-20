@@ -134,6 +134,7 @@ pipeline {
                 script {
                     withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_SA_KEY_PATH')]) {
                          echo "Authenticating with GCP..."
+                              sh 'echo "DEBUG: The shell sees the path as: [$GCP_SA_KEY_PATH]"'
                               sh 'gcloud auth activate-service-account --key-file=$GCP_SA_KEY_PATH'
                               sh 'gcloud config set project $GCP_PROJECT_ID'
                               echo "Configuring kubectl for GKE cluster ${GKE_CLUSTER_NAME}..."
