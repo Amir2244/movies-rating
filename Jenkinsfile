@@ -133,15 +133,13 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_SA_KEY_PATH')]) {
-                        echo "Authenticating with GCP..."
-                        sh "gcloud auth activate-service-account --key-file=${GCP_SA_KEY_PATH}"
-                        sh "gcloud config set project ${GCP_PROJECT_ID}"
-
-                        echo "Configuring kubectl for GKE cluster ${GKE_CLUSTER_NAME}..."
-                        sh "gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE}"
-
-                        echo "Deploying application resources from 'k8s' directory..."
-                        sh "kubectl apply -f kubernetes/"
+                         echo "Authenticating with GCP..."
+                              sh 'gcloud auth activate-service-account --key-file=$GCP_SA_KEY_PATH'
+                              sh 'gcloud config set project $GCP_PROJECT_ID'
+                              echo "Configuring kubectl for GKE cluster ${GKE_CLUSTER_NAME}..."
+                              sh 'gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GKE_CLUSTER_ZONE'
+                              echo "Deploying application resources from 'k8s' directory..."
+                              sh 'kubectl apply -f kubernetes/'
 
                         def services = [
                             'analytics-api',
