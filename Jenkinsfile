@@ -127,13 +127,17 @@ pipeline {
         stage('Deploy to GKE') {
             steps {
             script {
-                        withGKE(credentialsId: 'gcp-service-account-key',
-                                project: 'stoked-mapper-461613-k5',
-                                location: 'us-east1-d',
-                                cluster: 'jenkins-cd') {
-                            echo "✅ Successfully authenticated with GKE cluster: jenkins-cd"
-                            echo "Deploying application resources from 'kubernetes/' directory..."
-                            sh 'kubectl apply -f kubernetes/'
+            withKubeConfig([
+                credentialsId: 'gcp-service-account-key',
+                clusterName: 'jenkins-cd',
+                serverUrl: '',
+                caCertificate: ''
+                            ]) {
+                echo "✅ Successfully created kubeconfig for authentication."
+                sh 'gcloud container clusters get-credentials jenkins-cd --zone us-east1-d --project stoked-mapper-461613-k5'
+                echo "Deploying application resources from 'kubernetes/' directory..."
+                sh 'kubectl apply -f kubernetes/'
+
 
                         def services = [
                             'analytics-api',
