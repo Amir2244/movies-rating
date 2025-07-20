@@ -124,39 +124,33 @@ pipeline {
             }
         }
 
-        stage('Deploy to GKE') {
-            steps {
-            script {
-            withKubeConfig([
-                credentialsId: 'gcp-service-account-key',
-                clusterName: 'jenkins-cd',
-                serverUrl: '',
-                caCertificate: ''
-                            ]) {
-                echo "✅ Successfully created kubeconfig for authentication."
-                sh 'gcloud container clusters get-credentials jenkins-cd --zone us-east1-d --project stoked-mapper-461613-k5'
-                echo "Deploying application resources from 'kubernetes/' directory..."
-                sh 'kubectl apply -f kubernetes/'
+stage('Deploy to GKE') {
+    steps {
+        script {
+            echo "Configuring kubectl for GKE cluster..."
+            sh 'gcloud config set project stoked-mapper-461613-k5'
+            sh 'gcloud container clusters get-credentials jenkins-cd --zone us-east1-d'
 
+            echo "Deploying application resources from 'kubernetes/' directory..."
+            sh 'kubectl apply -f kubernetes/'
 
-                        def services = [
-                            'analytics-api',
-                            'recommendations-api',
-                            'batch-processing-service',
-                            'real-time-service',
-                            'analytics-ui'
-                        ]
+            def services = [
+                'analytics-api',
+                'recommendations-api',
+                'batch-processing-service',
+                'real-time-service',
+                'analytics-ui'
+            ]
 
-                        echo "Updating deployment images to version: ${VERSION_TAG}"
-                        services.each { serviceName ->
-                            def deploymentName = "movies-rating-${serviceName}"
-                            def imageName = "${DOCKERHUB_CREDENTIALS_USR}/movies-rating-${serviceName}:${VERSION_TAG}"
-                            sh "kubectl set image deployment/${deploymentName} ${serviceName}=${imageName} --record"
-                        }
-                    }
-                }
+            echo "Updating deployment images to version: ${VERSION_TAG}"
+            services.each { serviceName ->
+                def deploymentName = "movies-rating-${serviceName}"
+                def imageName = "${DOCKERHUB_CREDENTIALS_USR}/movies-rating-${serviceName}:${VERSION_TAG}"
+                sh "kubectl set image deployment/${deploymentName} ${serviceName}=${imageName} --record"
             }
         }
+    }
+}
 
         stage('Prepare Docker Volumes') {
             steps {
