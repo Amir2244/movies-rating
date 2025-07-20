@@ -125,22 +125,15 @@ pipeline {
         }
 
         stage('Deploy to GKE') {
-            environment {
-                GCP_PROJECT_ID = 'stoked-mapper-461613-k5'
-                GKE_CLUSTER_NAME = 'jenkins-cd'
-                GKE_CLUSTER_ZONE = 'us-east1-d'
-            }
             steps {
-                script {
-                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_SA_KEY_PATH')]) {
-                         echo "Authenticating with GCP..."
-                              sh 'echo "DEBUG: The shell sees the path as: [$GCP_SA_KEY_PATH]"'
-                              sh 'gcloud auth activate-service-account --key-file=$GCP_SA_KEY_PATH'
-                              sh 'gcloud config set project $GCP_PROJECT_ID'
-                              echo "Configuring kubectl for GKE cluster ${GKE_CLUSTER_NAME}..."
-                              sh 'gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GKE_CLUSTER_ZONE'
-                              echo "Deploying application resources from 'k8s' directory..."
-                              sh 'kubectl apply -f kubernetes/'
+            script {
+                        withGKE(credentialsId: 'gcp-service-account-key',
+                                project: 'stoked-mapper-461613-k5',
+                                location: 'us-east1-d',
+                                cluster: 'jenkins-cd') {
+                            echo "✅ Successfully authenticated with GKE cluster: jenkins-cd"
+                            echo "Deploying application resources from 'kubernetes/' directory..."
+                            sh 'kubectl apply -f kubernetes/'
 
                         def services = [
                             'analytics-api',
