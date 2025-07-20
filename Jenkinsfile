@@ -126,9 +126,9 @@ pipeline {
 
         stage('Deploy to GKE') {
             environment {
-                GCP_PROJECT_ID = 'your-gcp-project-id'
-                GKE_CLUSTER_NAME = 'your-gke-cluster-name'
-                GKE_CLUSTER_ZONE = 'your-gke-cluster-zone'
+                GCP_PROJECT_ID = 'stoked-mapper-461613-k5'
+                GKE_CLUSTER_NAME = 'jenkins-cd'
+                GKE_CLUSTER_ZONE = 'us-east1-d'
             }
             steps {
                 script {
