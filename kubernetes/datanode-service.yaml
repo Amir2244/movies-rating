@@ -7,7 +7,9 @@ metadata:
   labels:
     io.kompose.service: datanode
   name: datanode
+  namespace: movies-rating
 spec:
+  type: NodePort
   ports:
     - name: "9864"
       port: 9864

@@ -7,6 +7,7 @@ metadata:
   labels:
     io.kompose.service: batch-processing-service
   name: batch-processing-service
+  namespace: movies-rating
 spec:
   replicas: 1
   selector:
@@ -45,6 +46,6 @@ spec:
                 done
 
                 echo 'Spark job submitted successfully.'
-          image: batch-processing-service
+          image: amir2244/movies-rating-batch-processing-service:latest
           name: batch-processing-service
       restartPolicy: Always

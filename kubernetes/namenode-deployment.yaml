@@ -7,6 +7,7 @@ metadata:
   labels:
     io.kompose.service: namenode
   name: namenode
+  namespace: movies-rating
 spec:
   replicas: 1
   selector:

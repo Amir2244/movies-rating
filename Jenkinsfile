@@ -100,7 +100,7 @@ pipeline {
                         def builds = services.collectEntries { serviceName ->
                             ["Build & Push ${serviceName}": {
                             try {
-                                    def imageName = "${DOCKERHUB_CREDENTIALS_USR}/movies-rating-${serviceName}"
+                                def imageName = "${DOCKERHUB_CREDENTIALS_USR}/movies-rating-${serviceName}"
 
                                     def dockerImage = docker.build("${imageName}:${VERSION_TAG}", "./${serviceName}")
 
@@ -119,6 +119,44 @@ pipeline {
                             }]
                         }
                         parallel builds
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to GKE') {
+            environment {
+                GCP_PROJECT_ID = 'your-gcp-project-id'
+                GKE_CLUSTER_NAME = 'your-gke-cluster-name'
+                GKE_CLUSTER_ZONE = 'your-gke-cluster-zone'
+            }
+            steps {
+                script {
+                    withCredentials([file(credentialsId: 'gcp-service-account-key', variable: 'GCP_SA_KEY_PATH')]) {
+                        echo "Authenticating with GCP..."
+                        sh "gcloud auth activate-service-account --key-file=${GCP_SA_KEY_PATH}"
+                        sh "gcloud config set project ${GCP_PROJECT_ID}"
+
+                        echo "Configuring kubectl for GKE cluster ${GKE_CLUSTER_NAME}..."
+                        sh "gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE}"
+
+                        echo "Deploying application resources from 'k8s' directory..."
+                        sh "kubectl apply -f kubernetes/"
+
+                        def services = [
+                            'analytics-api',
+                            'recommendations-api',
+                            'batch-processing-service',
+                            'real-time-service',
+                            'analytics-ui'
+                        ]
+
+                        echo "Updating deployment images to version: ${VERSION_TAG}"
+                        services.each { serviceName ->
+                            def deploymentName = "movies-rating-${serviceName}"
+                            def imageName = "${DOCKERHUB_CREDENTIALS_USR}/movies-rating-${serviceName}:${VERSION_TAG}"
+                            sh "kubectl set image deployment/${deploymentName} ${serviceName}=${imageName} --record"
+                        }
                     }
                 }
             }

@@ -7,7 +7,9 @@ metadata:
   labels:
     io.kompose.service: recommendations-api
   name: recommendations-api
+  namespace: movies-rating
 spec:
+  type: NodePort
   ports:
     - name: "8082"
       port: 8082

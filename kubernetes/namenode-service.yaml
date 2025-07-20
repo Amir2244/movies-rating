@@ -7,7 +7,9 @@ metadata:
   labels:
     io.kompose.service: namenode
   name: namenode
+  namespace: movies-rating
 spec:
+  type: NodePort
   ports:
     - name: "9870"
       port: 9870

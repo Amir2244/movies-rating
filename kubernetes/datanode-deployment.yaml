@@ -7,8 +7,9 @@ metadata:
   labels:
     io.kompose.service: datanode
   name: datanode
+  namespace: movies-rating
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       io.kompose.service: datanode

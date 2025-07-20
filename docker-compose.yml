@@ -30,6 +30,8 @@ services:
   data-importer:
     image: bde2020/hadoop-namenode
     container_name: data-importer
+    ports:
+      - "8092:8092"
     depends_on:
       - namenode
       - datanode
@@ -92,6 +94,8 @@ services:
       context: ./batch-processing-service
       dockerfile: Dockerfile
     container_name: batch-processing-service
+    ports:
+      - "8090:8090"
     depends_on:
       - spark-master
       - namenode
@@ -130,6 +134,8 @@ services:
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    ports:
+      - "8086:8086"
     depends_on:
       - spark-master
       - datanode
@@ -143,6 +149,8 @@ services:
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
       - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    ports:
+      - "8087:8087"
     depends_on:
       - spark-master
       - datanode
@@ -189,6 +197,8 @@ services:
 
   taskmanager:
     image: flink:1.17.1-scala_2.12-java11
+    ports:
+      - "8095:8095"
     depends_on:
       - jobmanager
       - kafka
@@ -207,6 +217,8 @@ services:
     build:
       context: ./real-time-service
       dockerfile: Dockerfile
+    ports:
+      - "8089:8089"
     depends_on:
       - jobmanager
     command: >
@@ -259,6 +271,8 @@ services:
   redis-init:
     image: redis/redis-stack:latest
     container_name: redis-init
+    ports:
+      - "8091:8091"
     depends_on:
       redis:
         condition: service_healthy

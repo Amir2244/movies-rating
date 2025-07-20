@@ -416,3 +416,4 @@ metadata:
   labels:
     io.kompose.service: redis-init
   name: redis-init-cm0
+  namespace: movies-rating

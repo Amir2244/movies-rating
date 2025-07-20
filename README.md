@@ -278,6 +278,122 @@ For production environments, consider implementing a backup strategy for these v
 docker run --rm -v namenode_data:/source -v /path/on/host:/backup alpine tar -czf /backup/namenode_backup.tar.gz -C /source .
 ```
 
+## Kubernetes Deployment
+
+The Movies Rating System can be deployed to a Kubernetes cluster. The Kubernetes manifests are provided in the `/kubernetes` directory.
+
+### Prerequisites
+
+- A running Kubernetes cluster (e.g., Minikube, Docker Desktop Kubernetes, or a cloud provider's cluster)
+- `kubectl` installed and configured to connect to your cluster
+- Container registry access for storing Docker images
+
+### Deployment Steps
+
+1. **Create Namespace (if not exists):**
+   ```bash
+   kubectl create namespace movies-rating
+   ```
+
+2. **Apply Storage Resources:**
+   ```bash
+   kubectl apply -f kubernetes/kafka-data-persistentvolumeclaim.yaml
+   ```
+
+3. **Deploy Infrastructure Services:**
+   ```bash
+   # Deploy MongoDB
+   kubectl apply -f kubernetes/mongodb-deployment.yaml
+   kubectl apply -f kubernetes/mongodb-service.yaml
+
+   # Deploy Redis
+   kubectl apply -f kubernetes/redis-deployment.yaml
+   kubectl apply -f kubernetes/redis-service.yaml
+   kubectl apply -f kubernetes/redis-init-cm0-configmap.yaml
+   kubectl apply -f kubernetes/redis-init-pod.yaml
+   kubectl apply -f kubernetes/redis-init-service.yaml
+
+   # Deploy Kafka
+   kubectl apply -f kubernetes/kafka-deployment.yaml
+   kubectl apply -f kubernetes/kafka-service.yaml
+
+   # Deploy HDFS components
+   kubectl apply -f kubernetes/namenode-deployment.yaml
+   kubectl apply -f kubernetes/namenode-service.yaml
+   kubectl apply -f kubernetes/datanode-deployment.yaml
+   kubectl apply -f kubernetes/datanode-service.yaml
+   ```
+
+4. **Deploy Processing Infrastructure:**
+   ```bash
+   # Deploy Spark components
+   kubectl apply -f kubernetes/spark-master-deployment.yaml
+   kubectl apply -f kubernetes/spark-master-service.yaml
+   kubectl apply -f kubernetes/spark-worker-deployment.yaml
+   kubectl apply -f kubernetes/spark-worker-service.yaml
+   kubectl apply -f kubernetes/spark-worker-2-deployment.yaml
+   kubectl apply -f kubernetes/spark-worker-2-service.yaml
+
+   # Deploy Flink components
+   kubectl apply -f kubernetes/jobmanager-deployment.yaml
+   kubectl apply -f kubernetes/jobmanager-service.yaml
+   kubectl apply -f kubernetes/taskmanager-deployment.yaml
+   kubectl apply -f kubernetes/taskmanager-service.yaml
+   ```
+
+5. **Deploy Application Services:**
+   ```bash
+   # Deploy APIs
+   kubectl apply -f kubernetes/recommendations-api-deployment.yaml
+   kubectl apply -f kubernetes/recommendations-api-service.yaml
+   kubectl apply -f kubernetes/analytics-api-deployment.yaml
+   kubectl apply -f kubernetes/analytics-api-service.yaml
+
+   # Deploy processing services
+   kubectl apply -f kubernetes/batch-processing-service-deployment.yaml
+   kubectl apply -f kubernetes/batch-processing-service-service.yaml
+   kubectl apply -f kubernetes/real-time-service-deployment.yaml
+   kubectl apply -f kubernetes/data-importer-pod.yaml
+   kubectl apply -f kubernetes/data-importer-service.yaml
+
+   # Deploy UI
+   kubectl apply -f kubernetes/analytics-ui-deployment.yaml
+   kubectl apply -f kubernetes/analytics-ui-service.yaml
+   ```
+
+### Service Access
+
+The services are exposed as NodePort services. To access them:
+
+1. Get the services and their ports:
+   ```bash
+   kubectl get services -n movies-rating
+   ```
+
+2. Access the services using your cluster's node IP and the assigned NodePort
+
+### Scaling Services
+
+You can scale the deployments based on your workload requirements:
+
+```bash
+# Scale Spark workers
+kubectl scale deployment spark-worker --replicas=3 -n movies-rating
+
+# Scale Flink TaskManagers
+kubectl scale deployment taskmanager --replicas=3 -n movies-rating
+```
+
+### Monitoring
+
+To monitor the pods and their status:
+
+```bash
+kubectl get pods -n movies-rating
+kubectl describe pod <pod-name> -n movies-rating
+kubectl logs <pod-name> -n movies-rating
+```
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
