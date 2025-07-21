@@ -130,7 +130,7 @@ stage('Deploy to GKE') {
             sh 'gcloud components install kubectl --quiet'
             echo "Configuring kubectl for GKE cluster..."
             sh 'gcloud config set project stoked-mapper-461613-k5'
-            sh 'gcloud container clusters get-credentials movies-rating --zone us-central1-c'
+            sh 'gcloud container clusters get-credentials movies-rating --zone us-east1-d'
 
             echo "Deploying application resources from 'kubernetes/' directory..."
             sh 'kubectl apply -f kubernetes/'
