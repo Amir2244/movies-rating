@@ -141,13 +141,6 @@ stage('Deploy to GKE') {
                 'real-time-service',
                 'analytics-ui'
             ]
-
-            echo "Updating deployment images to version: ${VERSION_TAG}"
-            services.each { serviceName ->
-                def deploymentName = "movies-rating-${serviceName}"
-                def imageName = "${DOCKERHUB_CREDENTIALS_USR}/movies-rating-${serviceName}:${VERSION_TAG}"
-                sh "kubectl set image deployment/${deploymentName} ${serviceName}=${imageName} --record"
-            }
         }
     }
 }
