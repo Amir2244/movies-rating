@@ -17,4 +17,11 @@ spec:
         - /bin/bash
       image: bde2020/hadoop-namenode
       name: data-importer
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "500m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
   restartPolicy: Never

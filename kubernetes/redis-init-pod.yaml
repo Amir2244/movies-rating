@@ -37,6 +37,13 @@ spec:
             redis-cli -h redis FT._LIST
       image: redis/redis-stack:latest
       name: redis-init
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "500m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
       volumeMounts:
         - mountPath: /scripts
           name: redis-init-cm0

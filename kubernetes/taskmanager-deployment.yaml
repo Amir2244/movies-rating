@@ -31,4 +31,11 @@ spec:
                 taskmanager.numberOfTaskSlots: 2
           image: flink:1.17.1-scala_2.12-java11
           name: taskmanager
+          resources:
+            requests:
+              memory: "3Gi"
+              cpu: "4000m"
+            limits:
+              memory: "1Gi"
+              cpu: "6000m"
       restartPolicy: Always

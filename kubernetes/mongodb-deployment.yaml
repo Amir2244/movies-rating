@@ -26,6 +26,13 @@ spec:
       containers:
         - image: mongo:latest
           name: mongodb
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "2000m"
+            limits:
+              memory: "1Gi"
+              cpu: "3000m"
           ports:
             - containerPort: 27017
               protocol: TCP

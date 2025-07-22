@@ -31,6 +31,13 @@ spec:
               value: "27017"
           image: amir2244/movies-rating-recommendations-api:latest
           name: recommendations-api
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "1000m"
+            limits:
+              memory: "1Gi"
+              cpu: "2000m"
           ports:
             - containerPort: 8080
               protocol: TCP

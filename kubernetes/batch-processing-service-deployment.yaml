@@ -48,4 +48,11 @@ spec:
                 echo 'Spark job submitted successfully.'
           image: amir2244/movies-rating-batch-processing-service:latest
           name: batch-processing-service
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "1000m"
+            limits:
+              memory: "1Gi"
+              cpu: "2000m"
       restartPolicy: Always

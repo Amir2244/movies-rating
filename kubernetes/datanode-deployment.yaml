@@ -9,7 +9,7 @@ metadata:
   name: datanode
   namespace: movies-rating
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       io.kompose.service: datanode
@@ -29,6 +29,13 @@ spec:
               value: hdfs://namenode:8020
           image: bde2020/hadoop-datanode
           name: datanode
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
           ports:
             - containerPort: 9864
               protocol: TCP

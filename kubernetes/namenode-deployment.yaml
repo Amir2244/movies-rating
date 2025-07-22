@@ -31,6 +31,13 @@ spec:
               value: hdfs://namenode:8020
           image: bde2020/hadoop-namenode
           name: namenode
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "3Gi"
+              cpu: "1500m"
           ports:
             - containerPort: 9870
               protocol: TCP

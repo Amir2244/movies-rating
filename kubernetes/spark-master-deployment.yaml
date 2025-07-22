@@ -27,6 +27,13 @@ spec:
               value: hdfs://namenode:8020
           image: bde2020/spark-master
           name: spark-master
+          resources:
+            requests:
+              memory: "3Gi"
+              cpu: "2000m"
+            limits:
+              memory: "1Gi"
+              cpu: "3000m"
           ports:
             - containerPort: 8080
               protocol: TCP

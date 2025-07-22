@@ -30,6 +30,13 @@ spec:
                 jobmanager.rpc.address: jobmanager
           image: flink:1.17.1-scala_2.12-java11
           name: jobmanager
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "1500m"
+            limits:
+              memory: "1Gi"
+              cpu: "2500m"
           ports:
             - containerPort: 8081
               protocol: TCP

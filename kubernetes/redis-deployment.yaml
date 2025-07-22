@@ -38,6 +38,13 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 10
           name: redis
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
           ports:
             - containerPort: 6379
               protocol: TCP

@@ -31,6 +31,13 @@ spec:
               value: ""
           image: amir2244/movies-rating-analytics-ui:latest
           name: analytics-ui
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "1500m"
+            limits:
+              memory: "1Gi"
+              cpu: "2500m"
           ports:
             - containerPort: 3000
               protocol: TCP

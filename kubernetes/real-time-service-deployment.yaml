@@ -48,4 +48,11 @@ spec:
                 echo 'Flink job submitted successfully.'
           image: amir2244/movies-rating-real-time-service:latest
           name: real-time-service
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "4000m"
+            limits:
+              memory: "1Gi"
+              cpu: "6000m"
       restartPolicy: Always
