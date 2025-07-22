@@ -29,4 +29,11 @@ spec:
               value: spark://spark-master:7077
           image: bde2020/spark-worker
           name: spark-worker
+          resources:
+            requests:
+              memory: "3Gi"
+              cpu: "4000m"
+            limits:
+              memory: "1Gi"
+              cpu: "6000m"
       restartPolicy: Always

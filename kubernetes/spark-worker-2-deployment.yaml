@@ -29,6 +29,13 @@ spec:
               value: spark://spark-master:7077
           image: bde2020/spark-worker
           name: spark-worker-2
+          resources:
+            requests:
+              memory: "3Gi"
+              cpu: "4000m"
+            limits:
+              memory: "1Gi"
+              cpu: "6000m"
           ports:
             - containerPort: 8087
               protocol: TCP
