@@ -47,10 +47,10 @@ spec:
           resources:
             requests:
               memory: "1Gi"
-              cpu: "1000m"
+              cpu: "4000m"
             limits:
-              memory: "3Gi"
-              cpu: "2000m"
+              memory: "4Gi"
+              cpu: "4500m"
           ports:
             - containerPort: 8086
               protocol: TCP
