@@ -23,12 +23,28 @@ spec:
       labels:
         io.kompose.service: namenode
     spec:
+      hostname: namenode
+      subdomain: namenode
       containers:
         - env:
             - name: CLUSTER_NAME
               value: test
             - name: CORE_CONF_fs_defaultFS
               value: hdfs://namenode:8020
+            - name: HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check
+              value: "false"
+            - name: HDFS_CONF_dfs_client_use_datanode_hostname
+              value: "false"
+            - name: HDFS_CONF_dfs_datanode_use_datanode_hostname
+              value: "false"
+            - name: HDFS_CONF_dfs_namenode_rpc_bind_host
+              value: "0.0.0.0"
+            - name: HDFS_CONF_dfs_namenode_servicerpc_bind_host
+              value: "0.0.0.0"
+            - name: HDFS_CONF_dfs_namenode_http_bind_host
+              value: "0.0.0.0"
+            - name: HDFS_CONF_dfs_namenode_https_bind_host
+              value: "0.0.0.0"
           image: bde2020/hadoop-namenode
           name: namenode
           resources:
@@ -43,4 +59,15 @@ spec:
               protocol: TCP
             - containerPort: 8020
               protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: 8020
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9870
+            initialDelaySeconds: 60
+            periodSeconds: 30
       restartPolicy: Always

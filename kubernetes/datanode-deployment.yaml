@@ -23,10 +23,24 @@ spec:
       labels:
         io.kompose.service: datanode
     spec:
+      hostname: datanode
+      subdomain: datanode
       containers:
         - env:
             - name: CORE_CONF_fs_defaultFS
               value: hdfs://namenode:8020
+            - name: HDFS_CONF_dfs_datanode_address
+              value: "0.0.0.0:9866"
+            - name: HDFS_CONF_dfs_datanode_http_address
+              value: "0.0.0.0:9864"
+            - name: HDFS_CONF_dfs_datanode_ipc_address
+              value: "0.0.0.0:9867"
+            - name: HDFS_CONF_dfs_client_use_datanode_hostname
+              value: "false"
+            - name: HDFS_CONF_dfs_datanode_use_datanode_hostname
+              value: "false"
+            - name: SERVICE_PRECONDITION
+              value: "namenode:8020"
           image: bde2020/hadoop-datanode
           name: datanode
           resources:
@@ -39,4 +53,20 @@ spec:
           ports:
             - containerPort: 9864
               protocol: TCP
+            - containerPort: 9866
+              protocol: TCP
+            - containerPort: 9867
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9864
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9864
+            initialDelaySeconds: 60
+            periodSeconds: 30
       restartPolicy: Always
