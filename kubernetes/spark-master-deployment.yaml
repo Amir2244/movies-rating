@@ -29,10 +29,10 @@ spec:
           name: spark-master
           resources:
             requests:
-              memory: "3Gi"
+              memory: "1Gi"
               cpu: "2000m"
             limits:
-              memory: "1Gi"
+              memory: "3Gi"
               cpu: "3000m"
           ports:
             - containerPort: 8080

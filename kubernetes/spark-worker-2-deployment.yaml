@@ -31,10 +31,10 @@ spec:
           name: spark-worker-2
           resources:
             requests:
-              memory: "3Gi"
+              memory: "1Gi"
               cpu: "4000m"
             limits:
-              memory: "1Gi"
+              memory: "3Gi"
               cpu: "6000m"
           ports:
             - containerPort: 8087

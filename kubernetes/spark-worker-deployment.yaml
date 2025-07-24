@@ -31,9 +31,9 @@ spec:
           name: spark-worker
           resources:
             requests:
-              memory: "3Gi"
+              memory: "1Gi"
               cpu: "4000m"
             limits:
-              memory: "1Gi"
+              memory: "3Gi"
               cpu: "6000m"
       restartPolicy: Always
