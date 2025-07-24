@@ -21,22 +21,54 @@ spec:
       labels:
         io.kompose.service: spark-master
     spec:
+      hostname: spark-master
+      subdomain: spark-master
       containers:
         - env:
             - name: CORE_CONF_fs_defaultFS
               value: hdfs://namenode:8020
-          image: bde2020/spark-master
+            - name: SPARK_MASTER_HOST
+              value: "0.0.0.0"
+            - name: SPARK_MASTER_PORT
+              value: "7077"
+            - name: SPARK_MASTER_WEBUI_PORT
+              value: "8080"
+            - name: SPARK_LOCAL_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: SPARK_CONF_spark_master_host
+              value: "spark-master"
+            - name: SPARK_CONF_spark_driver_host
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          image: bde2020/spark-master:3.3.0-hadoop3.3
           name: spark-master
           resources:
             requests:
               memory: "1Gi"
-              cpu: "2000m"
+              cpu: "1000m"
             limits:
               memory: "3Gi"
-              cpu: "3000m"
+              cpu: "2000m"
           ports:
             - containerPort: 8080
               protocol: TCP
+              name: webui
             - containerPort: 7077
               protocol: TCP
+              name: spark
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
       restartPolicy: Always
