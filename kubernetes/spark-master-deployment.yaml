@@ -21,8 +21,7 @@ spec:
       labels:
         io.kompose.service: spark-master
     spec:
-      hostname: spark-master
-      subdomain: spark-master
+      # The 'hostname' and 'subdomain' fields have been removed from this section.
       containers:
         - env:
             - name: CORE_CONF_fs_defaultFS
@@ -37,8 +36,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-            - name: SPARK_CONF_spark_master_host
-              value: "spark-master"
             - name: SPARK_CONF_spark_driver_host
               valueFrom:
                 fieldRef:
