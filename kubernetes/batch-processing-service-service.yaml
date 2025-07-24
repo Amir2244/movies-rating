@@ -11,7 +11,7 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - name: "8090"
+    - name: "http"
       port: 8090
       targetPort: 8090
   selector:

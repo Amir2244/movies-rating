@@ -11,8 +11,11 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - name: "8086"
+    - name: "webui"
       port: 8086
       targetPort: 8086
+    - name: "worker"
+      port: 7000
+      targetPort: 7000
   selector:
     io.kompose.service: spark-worker

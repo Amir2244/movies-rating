@@ -21,19 +21,53 @@ spec:
       labels:
         io.kompose.service: spark-worker
     spec:
+      hostname: spark-worker
       containers:
         - env:
             - name: CORE_CONF_fs_defaultFS
               value: hdfs://namenode:8020
             - name: SPARK_MASTER_URL
               value: spark://spark-master:7077
-          image: bde2020/spark-worker
+            - name: SPARK_WORKER_WEBUI_PORT
+              value: "8086"
+            - name: SPARK_WORKER_PORT
+              value: "7000"
+            - name: SPARK_LOCAL_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: SPARK_WORKER_CORES
+              value: "2"
+            - name: SPARK_WORKER_MEMORY
+              value: "2g"
+            - name: SERVICE_PRECONDITION
+              value: "spark-master:7077"
+          image: bde2020/spark-worker:3.3.0-hadoop3.3
           name: spark-worker
           resources:
             requests:
               memory: "1Gi"
-              cpu: "4000m"
+              cpu: "1000m"
             limits:
               memory: "3Gi"
-              cpu: "6000m"
+              cpu: "2000m"
+          ports:
+            - containerPort: 8086
+              protocol: TCP
+              name: webui
+            - containerPort: 7000
+              protocol: TCP
+              name: worker
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8086
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8086
+            initialDelaySeconds: 60
+            periodSeconds: 30
       restartPolicy: Always

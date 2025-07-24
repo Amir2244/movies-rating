@@ -25,34 +25,76 @@ spec:
         - args:
             - bash
             - -c
-            - |2
-                echo 'Waiting for Spark Master to be ready...'
-                while ! nc -z spark-master 7077; do
-                  sleep 1;
-                done;
-
-                echo 'Spark Master is ready. Attempting to submit Spark job...'
-
-                MAX_RETRIES=5
-                RETRY_COUNT=0
-                until /spark/bin/spark-submit --master spark://spark-master:7077 --class org.hiast.batch.launcher.AppLauncher /opt/spark-apps/batch-processing-service.jar analytics; do
-                  RETRY_COUNT=$()((RETRY_COUNT+1))
-                  if [  -ge  ]; then
-                    echo 'Failed to submit Spark job after  attempts. Exiting.'
-                    exit 1
-                  fi
-                  echo 'Job submission failed, retrying in 5 seconds... (Attempt /)'
-                  sleep 5
-                done
-
-                echo 'Spark job submitted successfully.'
+            - |
+              echo 'Waiting for HDFS to be available...'
+              until hdfs dfs -ls / > /dev/null 2>&1; do
+                echo 'HDFS not ready, waiting...'
+                sleep 5
+              done
+              echo 'HDFS is ready.'
+              
+              echo 'Waiting for Spark Master to be ready...'
+              while ! nc -z spark-master 7077; do
+                echo 'Spark Master not ready, waiting...'
+                sleep 5
+              done
+              echo 'Spark Master is ready.'
+              
+              echo 'Waiting for Spark Workers to be available...'
+              sleep 30
+              
+              echo 'Attempting to submit Spark job...'
+              MAX_RETRIES=5
+              RETRY_COUNT=0
+              
+              until /spark/bin/spark-submit \
+                --master spark://spark-master:7077 \
+                --deploy-mode client \
+                --driver-memory 2048m \
+                --executor-memory 1g \
+                --executor-cores 2 \
+                --conf spark.sql.adaptive.enabled=true \
+                --conf spark.sql.adaptive.coalescePartitions.enabled=true \
+                --conf spark.serializer=org.apache.spark.serializer.KryoSerializer \
+                --class org.hiast.batch.launcher.AppLauncher \
+                /opt/spark-apps/batch-processing-service.jar analytics; do
+              
+                RETRY_COUNT=$((RETRY_COUNT+1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "Failed to submit Spark job after $MAX_RETRIES attempts. Exiting."
+                  exit 1
+                fi
+                echo "Job submission failed, retrying in 10 seconds... (Attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep 10
+              done
+              
+              echo 'Spark job submitted successfully.'
+              
+              # Keep container running to serve any web interface on port 8090
+              echo 'Starting web service on port 8090...'
+              # If your app doesn't have a web server, you can replace this with:
+              # tail -f /dev/null
+              exec "$@"
+          env:
+            - name: CORE_CONF_fs_defaultFS
+              value: hdfs://namenode:8020
+            - name: SPARK_MASTER_URL
+              value: spark://spark-master:7077
+            - name: SPARK_LOCAL_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           image: amir2244/movies-rating-batch-processing-service:latest
           name: batch-processing-service
           resources:
             requests:
               memory: "512Mi"
-              cpu: "1000m"
+              cpu: "500m"
             limits:
               memory: "1Gi"
-              cpu: "2000m"
+              cpu: "1000m"
+          ports:
+            - containerPort: 8090
+              protocol: TCP
+              name: http
       restartPolicy: Always
