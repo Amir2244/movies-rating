@@ -26,15 +26,22 @@ spec:
             - bash
             - -c
             - |
-              echo 'Waiting for HDFS to be available...'
-              until hdfs dfs -ls / > /dev/null 2>&1; do
-                echo 'HDFS not ready, waiting...'
+              echo 'Waiting for HDFS NameNode to be available...'
+              until nc -z namenode 8020; do
+                echo 'HDFS NameNode not ready, waiting...'
                 sleep 5
               done
-              echo 'HDFS is ready.'
+              echo 'HDFS NameNode is ready.'
+              
+              echo 'Waiting for HDFS DataNode to be available...'
+              until nc -z datanode 9864; do
+                echo 'HDFS DataNode not ready, waiting...'
+                sleep 5
+              done
+              echo 'HDFS DataNode is ready.'
               
               echo 'Waiting for Spark Master to be ready...'
-              while ! nc -z spark-master 7077; do
+              until nc -z spark-master 7077; do
                 echo 'Spark Master not ready, waiting...'
                 sleep 5
               done
@@ -50,9 +57,9 @@ spec:
               until /spark/bin/spark-submit \
                 --master spark://spark-master:7077 \
                 --deploy-mode client \
-                --driver-memory 2048m \
-                --executor-memory 1g \
-                --executor-cores 2 \
+                --driver-memory 2g \
+                --executor-memory 4g \
+                --executor-cores 3 \
                 --conf spark.sql.adaptive.enabled=true \
                 --conf spark.sql.adaptive.coalescePartitions.enabled=true \
                 --conf spark.serializer=org.apache.spark.serializer.KryoSerializer \
