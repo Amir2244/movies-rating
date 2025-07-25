@@ -61,7 +61,7 @@ public class SparkConfig {
             applyStandaloneClusterSettings(conf);
         } else if (masterUrl.equals("yarn") || masterUrl.startsWith("yarn-")) {
             log.info("Applying YARN cluster mode settings");
-            applyYarnClusterSettings(conf);
+            //applyYarnClusterSettings(conf);
         } else {
             log.warn("Unknown Spark master URL format: {}. Applying default settings.", masterUrl);
             applyDefaultSettings(conf);
