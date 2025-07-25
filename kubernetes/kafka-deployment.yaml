@@ -23,6 +23,9 @@ spec:
       labels:
         io.kompose.service: kafka
     spec:
+      securityContext:
+        fsGroup: 1001
+        runAsUser: 1001
       containers:
         - env:
             - name: KAFKA_KRAFT_CLUSTER_ID
