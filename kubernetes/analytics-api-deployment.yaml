@@ -28,7 +28,7 @@ spec:
             - name: SPRING_DATA_MONGODB_HOST
               value: mongodb
             - name: SPRING_DATA_MONGODB_PORT
-              value: "27017"
+              value: "27018"
           image: amir2244/movies-rating-analytics-api:latest
           name: analytics-api
           resources:
