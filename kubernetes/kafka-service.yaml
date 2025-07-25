@@ -6,14 +6,11 @@ metadata:
     kompose.version: 1.34.0 (cbf2835db)
   labels:
     io.kompose.service: kafka
-  name: kafka
+  name: kafka-internal
   namespace: movies-rating
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
-    - name: external
-      port: 9094
-      targetPort: 9094
     - name: internal
       port: 9092
       targetPort: 9092
