@@ -1,4 +1,3 @@
-
 package org.hiast.realtime;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -43,13 +42,15 @@ public class RealTimeRecommendationsJob {
         kafkaProps.setProperty("group.id", appConfig.getProperty("kafka.group.id"));
 
         String inputTopic = appConfig.getProperty("kafka.topic.input");
-        String outputTopic = appConfig.getProperty("kafka.topic.output");
+        // FIX: Read the new 'processed' topic. The 'output' topic ('recommendations')
+        // is now used exclusively by the KafkaNotifierAdapter for actual recommendations.
+        String processedEventsTopic = appConfig.getProperty("kafka.topic.processed");
 
-        if (outputTopic == null || outputTopic.isEmpty()) {
-            outputTopic = "processed-events"; // Default output topic
+        if (processedEventsTopic == null || processedEventsTopic.isEmpty()) {
+            processedEventsTopic = "processed-events"; // Default output topic
         }
 
-        LOG.info("Using input topic: {}, output topic: {}", inputTopic, outputTopic);
+        LOG.info("Using input topic: {}, processed events topic: {}", inputTopic, processedEventsTopic);
 
         FlinkKafkaConsumer<InteractionEvent> kafkaConsumer = new FlinkKafkaConsumer<>(
                 inputTopic,
@@ -61,15 +62,16 @@ public class RealTimeRecommendationsJob {
         DataStream<InteractionEvent> interactionEvents = env.addSource(kafkaConsumer);
 
         // 5. Process the stream with the RichMapFunction and get the processed events
+        // The RichMapFunction internally uses KafkaNotifierAdapter to send recommendations to the 'recommendations' topic.
         DataStream<InteractionEvent> processedEvents = interactionEvents
-                .filter(Objects::nonNull) // Filter out any messages that failed deserialization
-                .map(new RecommendationRichMapFunction()) // This returns the processed event
+                .filter(Objects::nonNull)
+                .map(new RecommendationRichMapFunction())
                 .name("RealTimeRecommendationProcessing");
 
         // 6. Configure Kafka producer for processed events
         // We'll use the same serialization mechanism (Fury) for consistency
         FlinkKafkaProducer<InteractionEvent> kafkaProducer = new FlinkKafkaProducer<>(
-                outputTopic,
+                processedEventsTopic, // FIX: Send to the 'processed_events' topic
                 new FurySerializationSchema(),
                 kafkaProps
         );
