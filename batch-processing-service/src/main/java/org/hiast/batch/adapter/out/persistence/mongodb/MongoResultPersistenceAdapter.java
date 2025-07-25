@@ -43,11 +43,11 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
     private static final int INITIAL_BATCH_SIZE = 5000;
     
     // Connection pool configuration
-    private static final int MAX_POOL_SIZE = 50; // Reduced to prevent overwhelming MongoDB
+    private static final int MAX_POOL_SIZE = 25; // Reduced to prevent overwhelming MongoDB
     private static final int MIN_POOL_SIZE = 5;
-    private static final int MAX_IDLE_TIME_MS = 60000;
-    private static final int CONNECTION_TIMEOUT_MS = 30000;
-    private static final int SOCKET_TIMEOUT_MS = 120000;
+    private static final int MAX_IDLE_TIME_MS = 80000;
+    private static final int CONNECTION_TIMEOUT_MS = 60000;
+    private static final int SOCKET_TIMEOUT_MS = 140000;
     
     // Rate limiting configuration
     private static final int MAX_OPERATIONS_PER_SECOND = 5000;
@@ -60,7 +60,7 @@ public class MongoResultPersistenceAdapter implements ResultPersistencePort {
     
     // Circuit breaker configuration
     private static final int FAILURE_THRESHOLD = 5;
-    private static final long CIRCUIT_BREAKER_TIMEOUT_MS = 80000;
+    private static final long CIRCUIT_BREAKER_TIMEOUT_MS = 100000;
 
     private final MongoConfig mongoConfig;
     private  MongoClient mongoClient;
