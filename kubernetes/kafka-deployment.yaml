@@ -25,8 +25,10 @@ spec:
     spec:
       containers:
         - env:
+            - name: KAFKA_KRAFT_CLUSTER_ID
+              value: "123456789"
             - name: KAFKA_CFG_ADVERTISED_LISTENERS
-              value: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+              value: INTERNAL://kafka:9092,EXTERNAL://35.188.219.30:9094
             - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
               value: CONTROLLER
             - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
