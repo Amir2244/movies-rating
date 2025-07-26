@@ -28,13 +28,12 @@ spec:
             - name: POD_NAME
               valueFrom: { fieldRef: { fieldPath: metadata.name } }
             - name: KAFKA_CFG_NODE_ID
-              value: "$(POD_NAME##*-)"
+              value: "0"
 
             - name: KAFKA_CFG_PROCESS_ROLES
               value: "broker,controller"
             - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
-              value: "$(POD_NAME##*-})@kafka-0.kafka-headless.movies-rating.svc.cluster.local:9094"
-
+              value: "0@kafka-0.kafka-headless.movies-rating.svc.cluster.local:9094"
             - name: KAFKA_CFG_LISTENERS
               value: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094"
             - name: KAFKA_CFG_ADVERTISED_LISTENERS
