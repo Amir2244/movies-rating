@@ -34,7 +34,7 @@ spec:
             - name: KAFKA_CFG_LISTENERS
               value: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094"
             - name: KAFKA_CFG_ADVERTISED_LISTENERS
-              value: "INTERNAL://kafka-0.kafka-headless.movies-rating.svc.cluster.local:9092,EXTERNAL://kafka-external.movies-rating.svc.cluster.local:9093"
+              value: "INTERNAL://kafka-0.kafka-headless.movies-rating.svc.cluster.local:9092,EXTERNAL://34.58.96.97:9093"
             - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
               value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
             - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
