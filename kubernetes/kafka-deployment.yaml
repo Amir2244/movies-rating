@@ -44,8 +44,8 @@ spec:
               value: "yes"
           resources:
             requests:
-              cpu: "500"
+              cpu: "500m"
               memory: "1Gi"
             limits:
-              cpu: "1000"
+              cpu: "1000m"
               memory: "2Gi"
