@@ -4,7 +4,7 @@ metadata:
   name: kafka
   namespace: movies-rating
 spec:
-  serviceName: "kafka-headless"
+  serviceName: kafka-headless
   replicas: 1
   selector:
     matchLabels:
@@ -15,26 +15,32 @@ spec:
         app: kafka
     spec:
       terminationGracePeriodSeconds: 30
+      hostname: kafka
+      subdomain: kafka-headless
       containers:
         - name: kafka
-          image: "bitnami/kafka:latest"
+          image: bitnami/kafka:latest
           ports:
             - containerPort: 9092
             - containerPort: 9093
+            - containerPort: 9094
           env:
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
             - name: KAFKA_CFG_NODE_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
+              value: "$(POD_NAME##*-)"
+
             - name: KAFKA_CFG_PROCESS_ROLES
               value: "broker,controller"
             - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
-              value: "kafka-0@kafka-headless.movies-rating.svc.cluster.local:9094"
+              value: "$(POD_NAME##*-})@kafka-0.kafka-headless.movies-rating.svc.cluster.local:9094"
+
             - name: KAFKA_CFG_LISTENERS
-              value: "INTERNAL://:9092,EXTERNAL://:9093,CONTROLLER://:9094"
+              value: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094"
             - name: KAFKA_CFG_ADVERTISED_LISTENERS
               value: |
-                INTERNAL://kafka-0.kafka-headless.movies-rating.svc.cluster.local:9092,EXTERNAL://34.58.96.97:9093
+                INTERNAL://$(POD_NAME).kafka-headless.movies-rating.svc.cluster.local:9092,\
+                EXTERNAL://kafka-external.movies-rating.svc.cluster.local:9093
             - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
               value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
             - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
@@ -43,18 +49,13 @@ spec:
               value: "CONTROLLER"
             - name: ALLOW_PLAINTEXT_LISTENER
               value: "yes"
+
           resources:
-            requests:
-              cpu: "500m"
-              memory: "1Gi"
-            limits:
-              cpu: "1000m"
-              memory: "2Gi"
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits:   { cpu: "1000m", memory: "2Gi" }
+
   volumeClaimTemplates:
-    - metadata:
-        name: kafka-data
+    - metadata: { name: kafka-data }
       spec:
-        accessModes: [ "ReadWriteOnce" ]
-        resources:
-          requests:
-            storage: 1Gi
+        accessModes: [ ReadWriteOnce ]
+        resources: { requests: { storage: 1Gi } }
