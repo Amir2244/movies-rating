@@ -29,11 +29,12 @@ spec:
             - name: KAFKA_CFG_PROCESS_ROLES
               value: "broker,controller"
             - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
-              value: "kafka-0@kafka-headless.default.svc.cluster.local:9093"
+              value: "kafka-0@kafka-headless.movies-rating.svc.cluster.local:9094"
             - name: KAFKA_CFG_LISTENERS
               value: "INTERNAL://:9092,EXTERNAL://:9093,CONTROLLER://:9094"
             - name: KAFKA_CFG_ADVERTISED_LISTENERS
-              value: "INTERNAL://kafka-0.kafka-headless.default.svc.cluster.local:9092,EXTERNAL://_{EXTERNAL_IP_OR_DOMAIN_}:9093"
+              value: |
+                INTERNAL://kafka-0.kafka-headless.movies-rating.svc.cluster.local:9092,EXTERNAL://_{EXTERNAL_IP_OR_DOMAIN_}:9093
             - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
               value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
             - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
