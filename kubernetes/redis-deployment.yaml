@@ -50,4 +50,12 @@ spec:
               protocol: TCP
             - containerPort: 8001
               protocol: TCP
+          volumeMounts:
+            - name: redis-storage
+              mountPath: /data
       restartPolicy: Always
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: redis-pvc
+
