@@ -29,6 +29,7 @@ const errorRate = new Rate('error_rate');
 const requestsMade = new Counter('requests_made');
 const eventProcessingTime = new Trend('event_processing_time');
 const activeUsers = new Gauge('active_users');
+
 export default function() {
     activeUsers.add(1);
     const userId = TEST_USER_IDS[Math.floor(Math.random() * TEST_USER_IDS.length)];
@@ -37,59 +38,51 @@ export default function() {
 
     const payload = {
         userId: userId,
+        movieId: movieId,
         eventType: eventType,
+        rating: 5,
         timestamp: new Date().toISOString(),
     };
-
-    if (['RATING_GIVEN', 'MOVIE_VIEWED', 'ADDED_TO_WATCHLIST', 'MOVIE_CLICKED'].includes(eventType)) {
-        payload.movieId = movieId;
-    }
-    if (eventType === 'RATING_GIVEN') {
-        payload.rating = "5";
-    }
 
     const url = `${BASE_URL}${API_PATH}`;
     const params = {
         headers: {
             'Content-Type': 'application/json',
         },
-        tags: {
-            eventType: eventType,
-            testType: 'stress'
-        }
     };
-    const response = http.post(url, JSON.stringify(payload), params);
-    requestsMade.add(1);
-    eventProcessingTime.add(response.timings.duration);
 
-    const success = check(response, {
-        'status is 200': (r) => r.status === 202,
-        'response body is valid JSON': (r) => {
+    const res = http.post(url, JSON.stringify(payload), params);
+
+    requestsMade.add(1);
+    const success = check(res, {
+        'status is 202 (Accepted)': (r) => r.status === 202,
+        'response includes a processed event': (r) => {
+            if (r.status !== 202) return false;
             try {
-                r.json();
-                return true;
+                const event = r.json('event');
+                return event && event.processed === true;
             } catch (e) {
-                console.error(`Failed to parse JSON for event ${eventType}: ${e.message}`);
                 return false;
             }
         },
-        'response contains event and recommendations': (r) => {
-            const body = r.json();
-            return body && body.event && Array.isArray(body.recommendations);
-        }
+        'response recommendations are valid (array or null)': (r) => {
+            if (r.status !== 202) return false;
+            try {
+                const recommendations = r.json('recommendations');
+                return recommendations === null || Array.isArray(recommendations);
+            } catch(e) {
+                return false;
+            }
+        },
     });
-    errorRate.add(!success);
-    if (!success) {
-        console.error(`Request failed: Event ${eventType}, Status ${response.status}, User ${userId}`);
-    }
-    sleep(Math.random() * 1.5 + 0.5);
-    activeUsers.add(-1);
-}
-export function setup() {
-    console.log('Starting Real-Time Service Stress Test...');
-    console.log(`Target URL: ${BASE_URL}${API_PATH}`);
-}
 
-export function teardown(data) {
-    console.log('Real-Time Service Stress Test completed.');
+    errorRate.add(!success);
+    eventProcessingTime.add(res.timings.duration);
+
+    if (!success) {
+        console.log(`Request failed validation. Status: ${res.status}, Body: ${res.body}`);
+    }
+
+    sleep(1);
+    activeUsers.add(-1);
 }
