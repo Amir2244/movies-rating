@@ -20,21 +20,21 @@ The system follows a microservices architecture with several interconnected comp
    - The **Analytics API** (Spring Boot) offers endpoints for querying analytics data, supporting filtering, sorting, and pagination.
 
 3. **Processing Layer**
-   - The **Batch Processing Service** (Apache Spark) trains recommendation models using historical data, generates user and item factors, and produces analytics insights. It sends data to the Analytics API and stores information in Redis.
-   - The **Real-Time Service** (Apache Flink) processes user interaction events in real-time, performing immediate analysis and generating recommendations. It communicates exclusively with Kafka for event processing.
+   - The **Batch Processing Service** (Google Dataproc) trains recommendation models using historical data, generates user and item factors, and produces analytics insights. It sends data to the Analytics API and stores information in Redis.
+   - The **Real-Time Service** (Google Dataproc) processes user interaction events in real-time, performing immediate analysis and generating recommendations. It communicates exclusively with Kafka for event processing.
 
 4. **Data Storage Layer**
    - **MongoDB** stores analytics data and is accessed by the Analytics API.
    - **Redis** serves as a vector search database for fast similarity lookups, used by both the Batch Processing Service and Real-Time Service.
-   - **HDFS** stores training data and trained models, primarily used by the Batch Processing Service.
+   - **Google Cloud Storage** stores training data and trained models, primarily used by the Batch Processing Service.
 
 5. **Messaging Layer**
-   - **Kafka** serves as the central event streaming platform, receiving events from various sources and delivering them to the Real-Time Service. It also sends data to HDFS for long-term storage.
+   - **Kafka** serves as the central event streaming platform, receiving events from various sources and delivering them to the Real-Time Service. It also sends data to Google Cloud Storage for long-term storage.
 
 ### Key Interactions
 
 - User interactions flow through Kafka to the Real-Time Service for immediate processing
-- The Batch Processing Service periodically trains models using historical data from HDFS
+- The Batch Processing Service periodically trains models using historical data from Google Cloud Storage
 - The Analytics API retrieves processed data from MongoDB to serve to the Analytics UI
 - The Recommendations API provides personalized recommendations based on pre-computed data
 
@@ -45,13 +45,13 @@ All services share a common domain model through the Shared Kernel module and fo
 ### Core Services
 
 #### Batch Processing Service
-- Trains recommendation models using Apache Spark's ALS algorithm
+- Trains recommendation models using Google Dataproc's ALS algorithm
 - Processes historical user ratings to generate user and item factors
-- Stores trained models in HDFS and factors in Redis
+- Stores trained models in Google Cloud Storage and factors in Redis
 - Generates analytics data for insights
 
 #### Real-Time Service
-- Processes user interaction events in real-time using Apache Flink
+- Processes user interaction events in real-time using Google Dataproc
 - Performs vector similarity search in Redis to find similar movies
 - Generates personalized recommendations based on user interactions
 - Notifies users of new recommendations
@@ -87,12 +87,11 @@ All services share a common domain model through the Shared Kernel module and fo
 ### Backend
 - **Java 17**: Core programming language
 - **Spring Boot**: Web framework for APIs
-- **Apache Spark**: Distributed computing for batch processing
-- **Apache Flink**: Stream processing for real-time events
+- **Google Dataproc**: Managed service for batch and stream processing
 - **Apache Kafka**: Event streaming platform
 - **Redis**: In-memory database with vector search capabilities
 - **MongoDB**: Document database for analytics and recommendations
-- **HDFS**: Distributed file system for model storage
+- **Google Cloud Storage**: Cloud storage for model storage
 
 ### Frontend
 - **Next.js**: React framework for the Analytics UI
@@ -154,45 +153,51 @@ docker-compose up -d
 ```
 
 This will start the following services:
-- Hadoop Namenode and Datanode
-- Spark Master and Workers
-- Flink JobManager and TaskManager
 - Kafka
 - Redis with RediSearch
 - MongoDB
 - All application services
 
+Note: Hadoop, Spark, and Flink services have been migrated to Google Dataproc and are no longer started locally.
+
 ### Accessing Service UIs
 
-- **HDFS Web UI**: http://localhost:9870
-- **Spark Master UI**: http://localhost:8080
-- **Spark Worker UI**: http://localhost:8081
-- **Flink Dashboard**: http://localhost:8081
+- **Google Cloud Console (Dataproc)**: https://console.cloud.google.com/dataproc
 - **Redis Insight**: http://localhost:8001
 - **Analytics UI**: http://localhost:3000
 - **Recommendations API**: http://localhost:8080/api/v1
 - **Analytics API**: http://localhost:8083/api/v1
 
+Note: HDFS, Spark, and Flink UIs are now accessible through the Google Cloud Console Dataproc section.
+
 ### Loading Data
 
-Before running the application, you need to load your ratings data into HDFS:
+Before running the application, you need to load your ratings data into Google Cloud Storage:
 
 ```bash
-# Copy a local ratings file to the namenode container
-docker cp /path/to/your/ratings.csv namenode:/tmp/
+# Install Google Cloud SDK if you haven't already
+# https://cloud.google.com/sdk/docs/install
 
-# Execute HDFS commands inside the namenode container
-docker exec -it namenode bash
-hadoop fs -mkdir -p /user/your_user/movielens
-hadoop fs -put /tmp/ratings.csv /user/your_user/movielens/
+# Authenticate with Google Cloud
+gcloud auth login
+
+# Set your project ID
+gcloud config set project your-project-id
+
+# Upload your ratings file to Google Cloud Storage
+gsutil cp /path/to/your/ratings.csv gs://your-bucket/movielens/
 ```
 
 ### Running the Batch Processing
 
 ```bash
-docker exec -it spark-master bash
-cd /opt/spark-apps
-spark-submit --class org.hiast.batch.adapter.driver.spark.BatchTrainingJob batch-training-service.jar
+# Submit the batch processing job to Google Dataproc
+gcloud dataproc jobs submit spark \
+  --region=your-region \
+  --cluster=your-cluster-name \
+  --class=org.hiast.batch.adapter.driver.spark.BatchTrainingJob \
+  --jars=gs://your-bucket/jars/batch-training-service.jar \
+  -- arg1 arg2  # Optional arguments for your job
 ```
 
 ### Stopping the Services
@@ -237,6 +242,33 @@ movies-rating/
 
 5. **Code Quality**: Follow SOLID principles and maintain clean code practices.
 
+## Testing
+
+### K6 Load Testing
+
+The project includes k6 load testing scripts for the Recommendations API. These tests are located in the `k6-tests` directory and are designed to validate the functionality and performance of the recommendations API.
+
+#### Test Types
+
+1. **Basic Functionality Tests**: Verify that the API works correctly with different user IDs and limits.
+2. **Load Tests**: Simulate moderate traffic to evaluate performance under normal conditions.
+3. **Stress Tests**: Simulate heavy traffic to evaluate performance under high load.
+
+#### Running the Tests
+
+To run the k6 tests, you need to have k6 installed on your system. See the [k6-tests/README.md](k6-tests/README.md) for detailed instructions on running the tests and interpreting the results.
+
+```bash
+# Run basic functionality test
+k6 run k6-tests/scripts/recommendations-api-test.js
+
+# Run load test
+k6 run k6-tests/scripts/recommendations-api-load-test.js
+
+# Run stress test
+k6 run k6-tests/scripts/recommendations-api-stress-test.js
+```
+
 ## CI/CD Pipeline
 
 The project includes a Jenkins pipeline (defined in `Jenkinsfile`) that automates the build, test, and deployment process.
@@ -255,8 +287,6 @@ The project includes a Jenkins pipeline (defined in `Jenkinsfile`) that automate
 
 The system uses several Docker volumes for persistent data storage:
 
-- **namenode_data**: Stores HDFS namenode data
-- **datanode_data**: Stores HDFS datanode data
 - **redis_data**: Stores Redis data including vector indexes
 - **mongo_data**: Stores MongoDB data
 - **kafka_data**: Stores Kafka logs and data
@@ -267,7 +297,9 @@ These volumes are critical for data persistence across container restarts and de
 2. Ensures Docker volumes are properly configured
 3. Preserves volumes during cleanup to maintain data integrity
 
-While the batch-processing-service and real-time-service don't directly use volumes in their Dockerfiles, they depend on services that do use volumes (like Redis, Kafka, HDFS). The pipeline ensures these dependencies have their volumes properly managed.
+While the batch-processing-service and real-time-service don't directly use volumes in their Dockerfiles, they depend on services that do use volumes (like Redis, Kafka). The pipeline ensures these dependencies have their volumes properly managed.
+
+Note: HDFS volumes (namenode_data, datanode_data) are no longer used as these services have been migrated to Google Cloud Storage.
 
 ### Volume Backup Considerations
 
@@ -275,7 +307,14 @@ For production environments, consider implementing a backup strategy for these v
 
 ```bash
 # Example backup command for a Docker volume
-docker run --rm -v namenode_data:/source -v /path/on/host:/backup alpine tar -czf /backup/namenode_backup.tar.gz -C /source .
+docker run --rm -v redis_data:/source -v /path/on/host:/backup alpine tar -czf /backup/redis_backup.tar.gz -C /source .
+```
+
+For Google Cloud Storage, use the following backup strategy:
+
+```bash
+# Example backup command for Google Cloud Storage
+gsutil -m cp -r gs://your-bucket/movielens gs://your-backup-bucket/movielens-backup
 ```
 
 ## Kubernetes Deployment
@@ -307,6 +346,7 @@ The Movies Rating System can be deployed to a Kubernetes cluster. The Kubernetes
    kubectl apply -f kubernetes/mongodb-service.yaml
 
    # Deploy Redis
+   kubectl apply -f kubernetes/redis-pvc.yaml
    kubectl apply -f kubernetes/redis-deployment.yaml
    kubectl apply -f kubernetes/redis-service.yaml
    kubectl apply -f kubernetes/redis-init-cm0-configmap.yaml
@@ -314,31 +354,36 @@ The Movies Rating System can be deployed to a Kubernetes cluster. The Kubernetes
    kubectl apply -f kubernetes/redis-init-service.yaml
 
    # Deploy Kafka
+   kubectl apply -f kubernetes/kafka-data-persistentvolumeclaim.yaml
    kubectl apply -f kubernetes/kafka-deployment.yaml
-   kubectl apply -f kubernetes/kafka-service.yaml
-
-   # Deploy HDFS components
-   kubectl apply -f kubernetes/namenode-deployment.yaml
-   kubectl apply -f kubernetes/namenode-service.yaml
-   kubectl apply -f kubernetes/datanode-deployment.yaml
-   kubectl apply -f kubernetes/datanode-service.yaml
+   kubectl apply -f kubernetes/kafka-headless-service.yaml
+   kubectl apply -f kubernetes/kafka-external-service.yaml
    ```
 
-4. **Deploy Processing Infrastructure:**
+4. **Set up Google Dataproc:**
    ```bash
-   # Deploy Spark components
-   kubectl apply -f kubernetes/spark-master-deployment.yaml
-   kubectl apply -f kubernetes/spark-master-service.yaml
-   kubectl apply -f kubernetes/spark-worker-deployment.yaml
-   kubectl apply -f kubernetes/spark-worker-service.yaml
-   kubectl apply -f kubernetes/spark-worker-2-deployment.yaml
-   kubectl apply -f kubernetes/spark-worker-2-service.yaml
+   # Create a Dataproc cluster for batch processing
+   gcloud dataproc clusters create batch-cluster \
+     --region=your-region \
+     --zone=your-zone \
+     --master-machine-type=n1-standard-4 \
+     --master-boot-disk-size=500 \
+     --num-workers=2 \
+     --worker-machine-type=n1-standard-4 \
+     --worker-boot-disk-size=500 \
+     --image-version=2.0-debian10
 
-   # Deploy Flink components
-   kubectl apply -f kubernetes/jobmanager-deployment.yaml
-   kubectl apply -f kubernetes/jobmanager-service.yaml
-   kubectl apply -f kubernetes/taskmanager-deployment.yaml
-   kubectl apply -f kubernetes/taskmanager-service.yaml
+   # Create a Dataproc cluster for real-time processing
+   gcloud dataproc clusters create realtime-cluster \
+     --region=your-region \
+     --zone=your-zone \
+     --master-machine-type=n1-standard-4 \
+     --master-boot-disk-size=500 \
+     --num-workers=2 \
+     --worker-machine-type=n1-standard-4 \
+     --worker-boot-disk-size=500 \
+     --image-version=2.0-debian10 \
+     --properties=spark:spark.dynamicAllocation.enabled=false
    ```
 
 5. **Deploy Application Services:**
@@ -348,17 +393,6 @@ The Movies Rating System can be deployed to a Kubernetes cluster. The Kubernetes
    kubectl apply -f kubernetes/recommendations-api-service.yaml
    kubectl apply -f kubernetes/analytics-api-deployment.yaml
    kubectl apply -f kubernetes/analytics-api-service.yaml
-
-   # Deploy processing services
-   kubectl apply -f kubernetes/batch-processing-service-deployment.yaml
-   kubectl apply -f kubernetes/batch-processing-service-service.yaml
-   kubectl apply -f kubernetes/real-time-service-deployment.yaml
-   kubectl apply -f kubernetes/data-importer-pod.yaml
-   kubectl apply -f kubernetes/data-importer-service.yaml
-
-   # Deploy UI
-   kubectl apply -f kubernetes/analytics-ui-deployment.yaml
-   kubectl apply -f kubernetes/analytics-ui-service.yaml
    ```
 
 ### Service Access
@@ -377,11 +411,14 @@ The services are exposed as NodePort services. To access them:
 You can scale the deployments based on your workload requirements:
 
 ```bash
-# Scale Spark workers
-kubectl scale deployment spark-worker --replicas=3 -n movies-rating
+# Scale Google Dataproc clusters
+gcloud dataproc clusters update batch-cluster \
+  --region=your-region \
+  --num-workers=4
 
-# Scale Flink TaskManagers
-kubectl scale deployment taskmanager --replicas=3 -n movies-rating
+# Scale other Kubernetes deployments
+kubectl scale deployment redis --replicas=3 -n movies-rating
+kubectl scale deployment recommendations-api --replicas=3 -n movies-rating
 ```
 
 ### Monitoring
