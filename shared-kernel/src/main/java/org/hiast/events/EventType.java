@@ -12,7 +12,6 @@ public enum EventType {
     ADDED_TO_WATCHLIST(2.0), // User added a movie to their watchlist - medium weight
     MOVIE_CLICKED(1.0),      // User clicked on a movie for details - low weight
     SEARCHED_FOR_MOVIE(0.5), // User searched for a movie - lowest weight
-    // Add other relevant event types as needed
     UNKNOWN(0.0);            // Default or fallback event type - no weight
 
     private final double weight;

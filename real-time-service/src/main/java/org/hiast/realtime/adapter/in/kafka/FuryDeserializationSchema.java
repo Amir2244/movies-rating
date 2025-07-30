@@ -35,11 +35,9 @@ public class FuryDeserializationSchema implements DeserializationSchema<Interact
             return (InteractionEvent) fury.deserialize(message);
         } catch (Exception e) {
             LOG.error("Failed to deserialize message with Fury", e);
-            // Reinitialize Fury instance to handle potential reference tracking issues
             LOG.info("Reinitializing Fury instance after deserialization failure");
             fury = FurySerializationUtils.createConfiguredFury();
 
-            // Try one more time with the new instance
             try {
                 return (InteractionEvent) fury.deserialize(message);
             } catch (Exception retryException) {

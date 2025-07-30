@@ -22,19 +22,17 @@ public class RedisUserFactorAdapter implements UserFactorPort {
     public RedisUserFactorAdapter(UnifiedJedis jedis) {
         this.jedis = jedis;
     }
-// In RedisUserFactorAdapter.java
 
     @Override
     public Optional<UserFactor<float[]>> findUserFactorById(UserId userId) {
-        // DEFINITIVE FIX: These values are taken directly from your VectorSerializationUtil.java
         final String KEY_PREFIX = "vector:user:";
         final String VECTOR_FIELD = "vector";
 
-        // Construct the correct key, e.g., "vector:user:123"
+
         String redisKey = KEY_PREFIX + userId.getUserId();
 
         try {
-            // Fetch the 'vector' field from the 'vector:user:...' hash key.
+
             byte[] userVectorBytes = jedis.hget(redisKey.getBytes(), VECTOR_FIELD.getBytes());
 
             if (userVectorBytes == null) {

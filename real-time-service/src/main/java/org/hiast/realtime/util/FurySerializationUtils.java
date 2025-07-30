@@ -55,7 +55,6 @@ public final class FurySerializationUtils {
         fury.register(InteractionEvent.class);
         fury.register(MovieRecommendation.class);
         fury.register(InteractionEventDetails.class);
-
         // Value objects
         fury.register(UserId.class);
         fury.register(MovieId.class);

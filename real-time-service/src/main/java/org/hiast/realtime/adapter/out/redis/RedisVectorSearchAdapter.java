@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 public class RedisVectorSearchAdapter implements VectorSearchPort {
     private static final Logger LOG = LoggerFactory.getLogger(RedisVectorSearchAdapter.class);
     private final UnifiedJedis jedis;
-    // FIX: Corrected the index name to match the redis-init script
     private static final String ITEM_INDEX_NAME = "item_factors_idx";
 
     public RedisVectorSearchAdapter(UnifiedJedis jedis) {
@@ -46,29 +45,20 @@ public class RedisVectorSearchAdapter implements VectorSearchPort {
         SearchResult searchResult;
 
         try {
-            // Get the movie vector from Redis
             String movieKey = VectorSerializationUtil.createItemFactorKey(movieId.getMovieId());
             LOG.info("Retrieving movie vector for key: {}", movieKey);
-
-            // Check if the movie exists in Redis
             if (!jedis.exists(movieKey)) {
                 LOG.warn("Movie not found in Redis for movie ID: {}", movieId.getMovieId());
                 return Collections.emptyList();
             }
-
-            // Get the vector field as a byte array
             byte[] vectorField = jedis.hget(movieKey.getBytes(), VectorSerializationUtil.VECTOR_FIELD.getBytes());
             if (vectorField == null) {
                 LOG.warn("Vector field not found for movie ID: {}", movieId.getMovieId());
                 return Collections.emptyList();
             }
-
-            // Deserialize the vector bytes to a float array
             float[] movieVector = VectorSerializationUtil.deserializeVector(vectorField);
             LOG.debug("Retrieved and deserialized movie vector (dimension: {}) for movie ID: {}", 
                     movieVector.length, movieId.getMovieId());
-
-            // Serialize the vector again for the query
             byte[] movieVectorBytes = VectorSerializationUtil.serializeVector(movieVector);
             LOG.debug("Using movie vector (dimension: {}) for search", movieVector.length);
 
@@ -135,7 +125,7 @@ public class RedisVectorSearchAdapter implements VectorSearchPort {
                         return null;
                     }
                 })
-                .filter(Objects::nonNull) // Filter out null values (the original movie and any errors)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
