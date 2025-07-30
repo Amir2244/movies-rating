@@ -25,7 +25,6 @@ public class RealTimeRecommendationsJob {
     private static final Logger LOG = LoggerFactory.getLogger(RealTimeRecommendationsJob.class);
 
     public static void main(String[] args) throws Exception {
-        // Determine which configuration to load based on program arguments
         final String configFileName = (args.length > 0 && "local".equalsIgnoreCase(args[0]))
                 ? "real-time-config-local.properties"
                 : "real-time-config.properties";

@@ -24,8 +24,7 @@ public class RecommendationRichMapFunction extends RichMapFunction<InteractionEv
 
     private static final Logger LOG = LoggerFactory.getLogger(RecommendationRichMapFunction.class);
 
-    // These transient fields are not serialized. They will be initialized in the open() method
-    // on each TaskManager when the job starts.
+
     private transient ProcessInteractionEventUseCase processInteractionEventUseCase;
     private transient UnifiedJedis jedis;
     private transient KafkaNotifierAdapter kafkaNotifierAdapter;
@@ -42,7 +41,6 @@ public class RecommendationRichMapFunction extends RichMapFunction<InteractionEv
         RedisUserFactorAdapter userFactorAdapter = new RedisUserFactorAdapter(this.jedis);
         RedisVectorSearchAdapter vectorSearchAdapter = new RedisVectorSearchAdapter(this.jedis);
 
-        // Use KafkaNotifierAdapter instead of LoggingNotifierAdapter
         this.kafkaNotifierAdapter = new KafkaNotifierAdapter(appConfig);
 
         this.processInteractionEventUseCase = new RealTimeRecommendationService(
@@ -56,7 +54,6 @@ public class RecommendationRichMapFunction extends RichMapFunction<InteractionEv
 
     @Override
     public void close() throws Exception {
-        // Close the connections when the Flink job is cancelled or finishes.
         if (jedis != null) {
             jedis.close();
         }
@@ -68,7 +65,6 @@ public class RecommendationRichMapFunction extends RichMapFunction<InteractionEv
 
     @Override
     public InteractionEvent map(InteractionEvent event) throws Exception {
-        // The use case is now initialized and ready to be used.
         if (event == null) {
             LOG.warn("Received null event");
             processInteractionEventUseCase.processEvent(null);
@@ -78,7 +74,6 @@ public class RecommendationRichMapFunction extends RichMapFunction<InteractionEv
         LOG.info("Processing event for user: {}", event.getUserId().getUserId());
         processInteractionEventUseCase.processEvent(event);
 
-        // Return the processed event so it can be sent back to Kafka
         return event;
     }
 }

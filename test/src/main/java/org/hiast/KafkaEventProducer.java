@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class KafkaEventProducer {
 
-    private static final String KAFKA_BROKER = "localhost:9094";
+    private static final String KAFKA_BROKER = "34.58.96.97:9093";
     private static final String INPUT_TOPIC = "user_interactions";
     private static final String OUTPUT_TOPIC = "processed-events";
     private static final String RECOMMENDATIONS_TOPIC = "recommendations";
@@ -111,7 +111,7 @@ public class KafkaEventProducer {
 
         InteractionEventDetails.Builder builder = new InteractionEventDetails.Builder(
                 userId, eventType, Instant.now())
-                .withMovieId(MovieId.of(195791));
+                .withMovieId(MovieId.of(2));
 
         // Add rating value if the event type is RATING_GIVEN
         if (eventType == EventType.RATING_GIVEN) {
@@ -119,7 +119,7 @@ public class KafkaEventProducer {
         }
 
         InteractionEventDetails details = builder.build();
-        return new InteractionEvent(userId, MovieId.of(195791), details);
+        return new InteractionEvent(userId, MovieId.of(2), details);
     }
 
     public static void main(String[] args) {

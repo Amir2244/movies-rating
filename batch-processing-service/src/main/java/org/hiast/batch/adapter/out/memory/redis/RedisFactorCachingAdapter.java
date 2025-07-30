@@ -43,9 +43,8 @@ import scala.collection.Seq;
 public class RedisFactorCachingAdapter implements FactorCachingPort, AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(RedisFactorCachingAdapter.class);
 
-    // Batch processing constants
-    private static final int BATCH_SIZE = 5000;
-    private static final int VECTOR_BATCH_SIZE = 1000; // Smaller batches for vector operations
+
+    private static final int VECTOR_BATCH_SIZE = 1000;
 
     // Redis connection pool constants
     private static final int MAX_TOTAL = 100;
@@ -55,26 +54,19 @@ public class RedisFactorCachingAdapter implements FactorCachingPort, AutoCloseab
     private static final boolean TEST_ON_BORROW = true;
     private static final boolean TEST_ON_RETURN = true;
     private static final int CONNECTION_TIMEOUT = 2000;
-    private static final int SO_TIMEOUT = 2000;
 
     // Vector storage constants
     private static final String MODEL_VERSION = "als-v1.0";
-    private static final String VECTOR_INDEX_PREFIX = "vector_idx";
 
     private final String redisHost;
     private final int redisPort;
     private final JedisPool jedisPool;
-    private final ObjectMapper objectMapper; // Kept for backward compatibility
-
     public RedisFactorCachingAdapter(String redisHost, int redisPort) {
         this.redisHost = redisHost;
         this.redisPort = redisPort;
         this.jedisPool = createJedisPool();
-        this.objectMapper = new ObjectMapper();
         log.info("RedisFactorCachingAdapter initialized with host: {}, port: {} (Vector Database Mode)",
                 redisHost, redisPort);
-
-        // Test Redis connection and log vector storage capabilities
         testRedisConnection();
     }
 
@@ -102,7 +94,6 @@ public class RedisFactorCachingAdapter implements FactorCachingPort, AutoCloseab
             String pong = jedis.ping();
             log.info("Redis connection test successful: {}", pong);
 
-            // Log Redis version and capabilities
             String info = jedis.info("server");
             if (info.contains("redis_version")) {
                 String[] lines = info.split("\r\n");
@@ -186,7 +177,6 @@ public class RedisFactorCachingAdapter implements FactorCachingPort, AutoCloseab
                         Object featuresObject = row.get(row.fieldIndex(processorFeaturesColumnName));
                         float[] vectorArray = null;
 
-                        // Convert various feature formats to float array
                         if (featuresObject instanceof List) {
                             @SuppressWarnings("unchecked")
                             List<Number> featureList = (List<Number>) featuresObject;
@@ -223,8 +213,6 @@ public class RedisFactorCachingAdapter implements FactorCachingPort, AutoCloseab
                                     processorEntityType, id, featuresObject.getClass().getName());
                             continue;
                         }
-
-                        // Serialize vector to byte array and store with metadata
                         if (vectorArray != null && vectorArray.length > 0) {
                             storeVectorInRedis(pipeline, id, vectorArray, processorEntityType);
                         } else {
